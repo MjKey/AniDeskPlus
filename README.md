@@ -5,10 +5,10 @@
 
 ![anidesk-transparent](https://github.com/user-attachments/assets/497e25a6-751c-4f98-bd60-faec3ab1e69d)
 
-# AniDesk (Fork)
-**AniDesk** — это неофициальный десктоп-клиент мобильного приложения **Anixart** с открытым исходным кодом, предоставляющий удобный способ просматривать аниме и получать информацию о релизах.
+# AniDeskPlus
+**AniDeskPlus** — это форк неофициального десктоп-клиента **AniDesk** (для мобильного приложения **Anixart**) с открытым исходным кодом, расширяющий базовые возможности плеера и клиента.
 
-> ℹ️ Данный репозиторий является **форком** [официального проекта](https://github.com/theDesConnet/AniDesk) от **theDesConnet**. Форк развивается отдельно, содержит дополнительные возможности, правки и новые функции.
+> ℹ️ Данный репозиторий является форком [официального проекта AniDesk](https://github.com/theDesConnet/AniDesk) от **theDesConnet**. Проект развивается отдельно и содержит дополнительные функции, правки и улучшенный функционал.
 
 </div>
 
@@ -17,15 +17,15 @@
 - 🔐 Использование вашего аккаунта Anixart  
 - ▶️ Встроенный видеоплеер  
 - 🎞️ Улучшение качества видео с помощью Anime4K  
-- ✨ Дополнительные возможности и улучшения (в рамках форка)
+- ✨ Дополнительные возможности и улучшения **AniDeskPlus**
 
 ## 📦 Установка
 
-> ⚠️ Актуальные сборки форка доступны на странице [релизов](https://github.com/MjKey/AniDesk/releases)
+> ⚠️ Актуальные сборки доступны на странице [релизов](https://github.com/MjKey/AniDeskPlus/releases)
 
 Архив
   - Скачайте архив с последней версией для вашей ОС.
-  - Распакуйте и запустите файл `AniDesk`.
+  - Распакуйте и запустите файл `AniDeskPlus`.
 
 Установочный файл
  - Скачайте установочный файл последней версии для вашей ОС.
@@ -34,13 +34,33 @@
 Nix / NixOS
   ```nix
   {
-    inputs.anidesk.url = "github:MjKey/AniDesk";
+    inputs.anideskplus.url = "github:MjKey/AniDeskPlus";
 
-    outputs = { nixpkgs, anidesk, ... }: {
+    outputs = { nixpkgs, anideskplus, ... }: {
       nixosConfigurations.<hostname> = nixpkgs.lib.nixosSystem {
         modules = [
-          anidesk.nixosModules.default
+          anideskplus.nixosModules.default
         ];
       };
     };
   }
+  ```
+
+## 🛠️ Сборка вручную
+
+```bash
+git clone [https://github.com/MjKey/AniDeskPlus.git](https://github.com/MjKey/AniDeskPlus.git)
+cd AniDeskPlus
+npm install
+npm run buildAndMake
+```
+
+## 💬 Обратная связь
+
+Нашли баг или хотите предложить улучшение? Открывайте [issue](https://github.com/MjKey/AniDeskPlus/issues "issue") или создавайте pull request.
+
+*Официальный репозиторий оригинального проекта: [theDesConnet/AniDesk](https://github.com/theDesConnet/AniDesk)*
+
+## 📜 Лицензия
+
+Этот проект лицензирован под **GPL-2.0**. Подробности см. в файле [LICENSE](LICENSE).
