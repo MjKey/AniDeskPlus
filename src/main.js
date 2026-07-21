@@ -80,7 +80,14 @@ if (app.isPackaged && SettingsFirst.AutoUpdate) {
   })
 
   autoUpdater.setFeedURL(feed);
-  autoUpdater.checkForUpdates();
+  // Delay update check to let Squirrel finish installation / shortcut creation if running for first time
+  setTimeout(() => {
+    try {
+      autoUpdater.checkForUpdates();
+    } catch (e) {
+      console.error("AutoUpdater check failed:", e);
+    }
+  }, 10000);
 }
 
 if (require('electron-squirrel-startup')) app.quit();
