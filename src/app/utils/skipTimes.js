@@ -1,5 +1,5 @@
 /**
- * SkipTimes service for retrieving OP/ED intervals from AniSkip & AniLiberty APIs.
+ * SkipTimes service for retrieving OP/ED intervals from AniSkip API.
  */
 
 const cache = new Map();
@@ -113,38 +113,6 @@ async function fetchAniSkip(malId, episodeNum) {
     }
 }
 
-/**
- * Fetch OP/ED intervals from AniLiberty / AniLibria V1 API.
- */
-async function fetchAniLiberty(episodeId) {
-    if (!episodeId) return null;
-    try {
-        const url = `https://aniliberty.top/api/v1/anime/releases/episodes/${episodeId}?include=opening%2Cending`;
-        const res = await fetch(url);
-        if (!res.ok) return null;
-        const data = await res.json();
-        if (!data) return null;
-
-        const result = { op: null, ed: null };
-        if (data.opening && typeof data.opening.start === 'number' && typeof data.opening.stop === 'number') {
-            result.op = {
-                start: data.opening.start,
-                end: data.opening.stop,
-            };
-        }
-        if (data.ending && typeof data.ending.start === 'number' && typeof data.ending.stop === 'number') {
-            result.ed = {
-                start: data.ending.start,
-                end: data.ending.stop,
-            };
-        }
-        return (result.op || result.ed) ? result : null;
-    } catch (e) {
-        console.warn('[SkipTimes] AniLiberty fetch error:', e);
-        return null;
-    }
-}
-
 function getEpisodeNumber(episode) {
     if (!episode) return 1;
     if (typeof episode.position === 'number' && episode.position > 0) {
@@ -161,7 +129,7 @@ function getEpisodeNumber(episode) {
  * Main function to retrieve skip times for a given release and episode.
  * @param {Object} release Release object containing title_ru, title_original, etc.
  * @param {Object} episode Episode object containing position, id, name.
- * @param {string} currentSourceName Source name (e.g. 'Libria', 'Kodik', 'Sibnet')
+ * @param {string} currentSourceName Source name
  */
 export async function getSkipTimes(release, episode, currentSourceName) {
     if (!release) return { op: null, ed: null };
@@ -174,26 +142,16 @@ export async function getSkipTimes(release, episode, currentSourceName) {
     }
 
     let result = null;
+    const malId = await resolveMalId(release);
 
-    // 1. Try AniLiberty if episode has an ID or source is Liberty
-    if ((currentSourceName === 'Libria' || currentSourceName === 'Liberty') && episode?.id) {
-        result = await fetchAniLiberty(episode.id);
-    }
-
-    // 2. Fallback to AniSkip
-    if (!result || (!result.op && !result.ed)) {
-        const malId = await resolveMalId(release);
-
-        if (malId) {
-            console.log(`[SkipTimes] Querying AniSkip for MAL ID ${malId}, Ep ${epNum}...`);
-            const aniSkipResult = await fetchAniSkip(malId, epNum);
-            if (aniSkipResult) {
-                result = aniSkipResult;
-                console.log(`[SkipTimes] Got AniSkip result:`, result);
-            }
-        } else {
-            console.warn(`[SkipTimes] Could not resolve MAL ID for: "${release.title_ru || release.title_original}"`);
+    if (malId) {
+        console.log(`[SkipTimes] Querying AniSkip for MAL ID ${malId}, Ep ${epNum}...`);
+        result = await fetchAniSkip(malId, epNum);
+        if (result) {
+            console.log(`[SkipTimes] Got AniSkip result:`, result);
         }
+    } else {
+        console.warn(`[SkipTimes] Could not resolve MAL ID for: "${release.title_ru || release.title_original}"`);
     }
 
     const finalResult = result || { op: null, ed: null };
