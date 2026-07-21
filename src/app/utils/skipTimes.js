@@ -5,19 +5,7 @@
 const cache = new Map();
 
 /**
- * Normalize common Russian title typos or variations.
- */
-function normalizeRussianTitle(title) {
-    if (!title) return '';
-    return title
-        .replace(/Хвост Фей/gi, 'Хвост Феи')
-        .replace(/ТВ-(\d+)/gi, '$1 сезон')
-        .replace(/ТВ(\d+)/gi, '$1 сезон')
-        .trim();
-}
-
-/**
- * Clean anime title for search query fallback.
+ * Clean anime title for search query fallback (removes brackets, extra spaces, etc.).
  */
 function cleanTitle(title) {
     if (!title) return '';
@@ -30,13 +18,13 @@ function cleanTitle(title) {
 }
 
 /**
- * Resolve MAL ID via Shikimori API.
+ * Search Shikimori API for a given query string.
  */
-async function getMalIdByTitle(title) {
-    if (!title || !title.trim()) return null;
+async function searchShikimori(query) {
+    if (!query || !query.trim()) return null;
     try {
-        const query = encodeURIComponent(title.trim());
-        const res = await fetch(`https://shikimori.one/api/animes?search=${query}&limit=1`, {
+        const url = `https://shikimori.one/api/animes?search=${encodeURIComponent(query.trim())}&limit=5`;
+        const res = await fetch(url, {
             headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AniDeskPlus/1.0' }
         });
         if (!res.ok) return null;
@@ -47,6 +35,48 @@ async function getMalIdByTitle(title) {
     } catch (e) {
         console.warn('[SkipTimes] Shikimori lookup error:', e);
     }
+    return null;
+}
+
+/**
+ * Resolve MAL ID via direct IDs or search cascade.
+ */
+async function resolveMalId(release) {
+    if (!release) return null;
+
+    let malId = release.shikimori_id || release.mal_id || release.myanimelist_id;
+    if (malId) return malId;
+
+    // 1. Try original title first (e.g. "Fairy Tail", "Shingeki no Kyojin Season 2")
+    if (release.title_original) {
+        malId = await searchShikimori(release.title_original);
+        if (malId) return malId;
+    }
+
+    // 2. Try raw Russian title (e.g. "Хвост Фей", "Атака титанов 2 сезон")
+    if (release.title_ru) {
+        malId = await searchShikimori(release.title_ru);
+        if (malId) return malId;
+    }
+
+    // 3. Try cleaned original title
+    if (release.title_original) {
+        const cleaned = cleanTitle(release.title_original);
+        if (cleaned && cleaned !== release.title_original) {
+            malId = await searchShikimori(cleaned);
+            if (malId) return malId;
+        }
+    }
+
+    // 4. Try cleaned Russian title
+    if (release.title_ru) {
+        const cleaned = cleanTitle(release.title_ru);
+        if (cleaned && cleaned !== release.title_ru) {
+            malId = await searchShikimori(cleaned);
+            if (malId) return malId;
+        }
+    }
+
     return null;
 }
 
@@ -152,23 +182,7 @@ export async function getSkipTimes(release, episode, currentSourceName) {
 
     // 2. Fallback to AniSkip
     if (!result || (!result.op && !result.ed)) {
-        let malId = release.shikimori_id || release.mal_id || release.myanimelist_id;
-
-        if (!malId && release.title_original) {
-            malId = await getMalIdByTitle(release.title_original);
-        }
-        if (!malId && release.title_ru) {
-            malId = await getMalIdByTitle(normalizeRussianTitle(release.title_ru));
-        }
-        if (!malId && release.title_ru) {
-            malId = await getMalIdByTitle(release.title_ru);
-        }
-        if (!malId) {
-            const cleaned = cleanTitle(release.title_original || release.title_ru);
-            if (cleaned) {
-                malId = await getMalIdByTitle(cleaned);
-            }
-        }
+        const malId = await resolveMalId(release);
 
         if (malId) {
             console.log(`[SkipTimes] Querying AniSkip for MAL ID ${malId}, Ep ${epNum}...`);
