@@ -13,7 +13,7 @@ const { SibnetParser } = require('anixartjs');
 let mainWindow;
 
 const server = 'https://update.electronjs.org'
-const feed = `${server}/theDesConnet/AniDesk/${process.platform}-${process.arch}/${app.getVersion()}`
+const feed = `${server}/MjKey/AniDeskPlus/${process.platform}-${process.arch}/${app.getVersion()}`
 const UserAgent = "AnixartApp/9.0 BETA 3-25021818 (Android 9; SDK 28; x86_64; ROG ASUS AI2201_B; ru)";
 const rpcClientId = '1372649290438148137';
 const SettingsPath = path.join(app.getPath("userData"), "settings.json");
@@ -69,7 +69,7 @@ if (SettingsFirst.AutoUpdate) {
     const dialogOpts = {
       type: 'info',
       buttons: ['Перезапустить', 'Позже'],
-      title: 'Обновление AniDesk',
+      title: 'Обновление AniDeskPlus',
       message: process.platform === 'win32' ? releaseNotes : releaseName,
       detail:
         'Новая версия была скачана, перезапустите приложение для установки.'

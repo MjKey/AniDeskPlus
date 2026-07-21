@@ -7,6 +7,7 @@
     export let video;
     export let isFullscreen;
     export let isHidden;
+    export let forceHide;
     export let isPaused;
     export let currentTime;
     export let durationTime;
@@ -29,6 +30,74 @@
     let dropdownElements, dropdownType;
     let relatedMaxPage = 0;
     export let volumePercent = 50;
+
+    import utils from "../../utils";
+
+    let skipTime = 85;
+    let showSkipSlider = false;
+    let skipLongPressTimeout;
+    let skipButtonPressed = false;
+
+    $: if (args && args.release) {
+        const stored = localStorage.getItem("skipDurations");
+        if (stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                skipTime = parsed[args.release.id] || 85;
+            } catch (e) {
+                skipTime = 85;
+            }
+        } else {
+            skipTime = 85;
+        }
+    }
+
+    function saveSkipTime(value) {
+        const stored = localStorage.getItem("skipDurations");
+        let parsed = {};
+        if (stored) {
+            try {
+                parsed = JSON.parse(stored);
+            } catch (e) {}
+        }
+        parsed[args.release.id] = value;
+        localStorage.setItem("skipDurations", JSON.stringify(parsed));
+    }
+
+    function handleSkipMouseDown() {
+        skipButtonPressed = true;
+        skipLongPressTimeout = setTimeout(() => {
+            if (skipButtonPressed) {
+                showSkipSlider = true;
+                skipButtonPressed = false;
+            }
+        }, 600);
+    }
+
+    function handleSkipMouseUp() {
+        if (skipButtonPressed) {
+            clearTimeout(skipLongPressTimeout);
+            skipButtonPressed = false;
+            performSkip();
+        }
+    }
+
+    function handleSkipMouseLeave() {
+        if (skipButtonPressed) {
+            clearTimeout(skipLongPressTimeout);
+            skipButtonPressed = false;
+        }
+    }
+
+    function performSkip() {
+        video.currentTime = video.currentTime + skipTime;
+        progressPercent = (video.currentTime / video.duration) * 100;
+        currentTime = utils.returnFormatedTime(video.currentTime);
+    }
+
+    onDestroy(() => {
+        if (skipLongPressTimeout) clearTimeout(skipLongPressTimeout);
+    });
 
     function onClickGui() {
         if (showSettings) {
@@ -361,6 +430,21 @@
                         height="28px"
                     />
                 </button>
+                <button
+                    class="gui-bottom-button"
+                    title="Скрыть интерфейс"
+                    onclick={(e) => {
+                        e.stopPropagation();
+                        forceHide();
+                    }}
+                >
+                    <img
+                        src="./assets/icons/view.svg"
+                        alt="hide"
+                        width="26px"
+                        height="26px"
+                    />
+                </button>
                 <button class="gui-bottom-button" onclick={() => {}}>
                     <img
                         src="./assets/icons/pipButton.svg"
@@ -450,20 +534,34 @@
                 </button>
             </div>
             <div class="right-content flex-row">
-                <button
-                    class="player-bottom-button"
-                    onclick={() => {
-                        video.currentTime = video.currentTime + 85;
-                        progressPercent =
-                            (video.currentTime / video.duration) * 100;
-                        currentTime = utils.returnFormatedTime(
-                            video.currentTime,
-                        );
-                    }}
-                >
-                    <img src="./assets/icons/skipOp.svg" alt="skipOp" />
-                    <span>Пропуск опенинга</span>
-                </button>
+                <div style="position: relative; display: flex;">
+                    {#if showSkipSlider}
+                        <div class="skip-slider-popover" onclick={(e) => e.stopPropagation()}>
+                            <button class="skip-slider-close" onclick={() => showSkipSlider = false}>✕</button>
+                            <div class="skip-slider-title">Пропуск опенинга: {skipTime} сек.</div>
+                            <input
+                                type="range"
+                                min="10"
+                                max="300"
+                                step="5"
+                                value={skipTime}
+                                oninput={(e) => {
+                                    skipTime = parseInt(e.target.value);
+                                    saveSkipTime(skipTime);
+                                }}
+                            />
+                        </div>
+                    {/if}
+                    <button
+                        class="player-bottom-button"
+                        onmousedown={handleSkipMouseDown}
+                        onmouseup={handleSkipMouseUp}
+                        onmouseleave={handleSkipMouseLeave}
+                    >
+                        <img src="./assets/icons/skipOp.svg" alt="skipOp" />
+                        <span>Пропуск опенинга</span>
+                    </button>
+                </div>
                 <button
                     class="player-bottom-button"
                     class:bottom-disabled={cEpisode.position ==
@@ -805,5 +903,51 @@
         border-radius: 9999px;
         background: #f0f0f0;
         box-shadow: none;
+    }
+
+    .skip-slider-popover {
+        position: absolute;
+        bottom: 60px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: var(--alt-background-color);
+        border: 1px solid var(--player-middle-button-select);
+        border-radius: 12px;
+        padding: 10px 15px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        z-index: 10;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        color: var(--main-text-color);
+    }
+    
+    .skip-slider-title {
+        font-size: 13px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    
+    .skip-slider-popover input[type="range"] {
+        width: 150px;
+        accent-color: var(--player-timeline-progress-color);
+        cursor: pointer;
+    }
+
+    .skip-slider-close {
+        position: absolute;
+        top: 4px;
+        right: 6px;
+        background: none;
+        border: none;
+        color: var(--secondary-text-color);
+        cursor: pointer;
+        font-size: 12px;
+        padding: 2px;
+    }
+
+    .skip-slider-close:hover {
+        color: var(--main-text-color);
     }
 </style>

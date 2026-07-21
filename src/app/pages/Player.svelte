@@ -261,8 +261,22 @@
     }
 
     let loading = true;
+    let forceHideActive = false;
+
+    function forceHide() {
+        isHidden = true;
+        forceHideActive = true;
+        if (timeout) {
+            clearTimeout(timeout);
+        }
+        setTimeout(() => {
+            forceHideActive = false;
+        }, 1000);
+    }
 
     function hideOnIdle() {
+        if (forceHideActive) return;
+
         if (timeout) {
             clearTimeout(timeout);
         }
@@ -790,6 +804,7 @@
         {playVideo}
         {args}
         {isHidden}
+        {forceHide}
         {isFullscreen}
         {isPaused}
         {video}

@@ -27,7 +27,7 @@
 
           anidesk = pkgs.buildNpmPackage rec {
             pname = "anidesk";
-            version = "0.0.1-beta.7";
+            version = "1.0.1";
 
             src = ./.;
             npmDepsHash = "sha256-77QcTHHZjHPZ40z8yrGYfZLVDIQoP1utSEBYIIkG5ew=";
@@ -73,7 +73,7 @@
 
             meta = {
               description = "Unofficial desktop client of Anixart";
-              homepage = "https://github.com/theDesConnet/AniDesk";
+              homepage = "https://github.com/theDesConnet/AniDeskPlus";
               license = lib.licenses.gpl2Only;
               mainProgram = "anidesk";
               platforms = systems;
