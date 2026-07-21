@@ -40,10 +40,10 @@
         onChangeCallback={(e) => updateKey("autoplayEpisode", e)}
     />
     <CheckboxElement
-        title="Запоминать позицию просмотра (В разработке)"
+        title="Запоминать позицию просмотра"
         description="Серия продолжается с того места, где вы остановились."
-        disabled={true}
-        onChangeCallback={(e) => {}}
+        value={playerSettings.rememberPosition}
+        onChangeCallback={(e) => updateKey("rememberPosition", e)}
     />
     <DropdownElement
         title="Соотношение сторон по умолчанию"

@@ -27,12 +27,14 @@
         ModeC,
     } from "anime4k-webgpu";
     import { localStorageWritable } from "@babichjacob/svelte-localstorage";
+    import { onDestroy } from "svelte";
     import PlayerGui from "../components/player/PlayerGUI.svelte";
-    import { onMount, onDestroy } from "svelte";
+    import { onMount } from "svelte";
     import { AniLibriaParser, SibnetParser, KodikParser } from "anixartjs";
     import { playerSettingsStore } from "../components/stores/pageHistory.js";
     import utils from "../utils";
     import { getSkipTimes } from "../utils/skipTimes.js";
+    import { savePosition, getSavedPosition, clearPosition } from "../utils/watchPosition.js";
 
     const upscaleModeMap = {
         0: DoG,
@@ -95,6 +97,39 @@
     let isEdAutoSkipped = false;
     let skipToastMessage = null;
     let skipToastTimeout = null;
+    let resumeToastMessage = null;
+    let resumeToastTimeout = null;
+    let hasRestoredPosition = false;
+    let lastWatchSaveTime = 0;
+
+    function performRestartVideo() {
+        if (video) {
+            video.currentTime = 0;
+            resumeToastMessage = null;
+            const ep = currentEpisode || args?.currentEpisode;
+            if (args?.release?.id && ep) {
+                clearPosition(args.release.id, ep);
+            }
+        }
+    }
+
+    function trySaveWatchPosition() {
+        if (!playerSettings?.rememberPosition || !video || !video.duration || isNaN(video.currentTime)) return;
+        const now = Date.now();
+        if (now - lastWatchSaveTime >= 3000) {
+            lastWatchSaveTime = now;
+            const ep = currentEpisode || args?.currentEpisode;
+            if (args?.release?.id && ep) {
+                savePosition(args.release.id, ep, video.currentTime, video.duration);
+            }
+        }
+    }
+
+    onDestroy(() => {
+        if (video && video.duration && args?.release?.id && (currentEpisode || args?.currentEpisode)) {
+            savePosition(args.release.id, currentEpisode || args.currentEpisode, video.currentTime, video.duration);
+        }
+    });
 
     function showSkipToast(msg) {
         skipToastMessage = msg;
@@ -436,6 +471,11 @@
     });
 
     async function playVideo(episode) {
+        if (video && video.duration && args?.release?.id && (currentEpisode || args?.currentEpisode)) {
+            savePosition(args.release.id, currentEpisode || args.currentEpisode, video.currentTime, video.duration);
+        }
+        hasRestoredPosition = false;
+        resumeToastMessage = null;
         updateSkipTimes();
         let avaliableQuality, link;
         let source =
@@ -668,14 +708,37 @@
         video.onloadedmetadata = () => {
             loading = true;
             durationTime = utils.returnFormatedTime(video.duration);
+
+            if (playerSettings?.rememberPosition !== false && !hasRestoredPosition) {
+                const ep = currentEpisode || args?.currentEpisode;
+                const saved = getSavedPosition(args?.release?.id, ep);
+                if (saved && saved.time > 5 && !saved.completed && (video.duration - saved.time) > 15) {
+                    video.currentTime = saved.time;
+                    hasRestoredPosition = true;
+                    resumeToastMessage = `Продолжено с ${utils.returnFormatedTime(saved.time)}`;
+                    if (resumeToastTimeout) clearTimeout(resumeToastTimeout);
+                    resumeToastTimeout = setTimeout(() => {
+                        resumeToastMessage = null;
+                    }, 6000);
+                }
+            }
         };
 
         video.onwaiting = () => {
-            loading = true;
+            loading = false;
         };
 
         video.onplaying = () => {
             loading = false;
+        };
+
+        video.onended = () => {
+            if (args?.release?.id && (currentEpisode || args?.currentEpisode) && video.duration) {
+                savePosition(args.release.id, currentEpisode || args.currentEpisode, video.duration, video.duration);
+            }
+            if (playerSettings.autoplayEpisode) {
+                playNextEpisode();
+            }
         };
 
         video.onvolumechange = () => {
@@ -687,6 +750,8 @@
             if (!video || !video.duration) return;
             currentTime = utils.returnFormatedTime(video.currentTime);
             progressPercent = (video.currentTime / video.duration) * 100;
+
+            trySaveWatchPosition();
 
             const cTime = video.currentTime;
 
@@ -1009,6 +1074,8 @@
         {activeSkipType}
         hasSkipTimes={!!(skipTimes?.op || skipTimes?.ed)}
         {skipToastMessage}
+        {resumeToastMessage}
+        {performRestartVideo}
         {performSkipOp}
         {performSkipEd}
     />

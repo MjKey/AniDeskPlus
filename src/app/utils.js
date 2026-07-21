@@ -14,6 +14,7 @@ module.exports = {
 
     playerDefaultSettings: {
         autoplayEpisode: true,
+        rememberPosition: true,
         autoSkipOpening: false,
         autoSkipEnding: false,
         showSkipButtons: true,

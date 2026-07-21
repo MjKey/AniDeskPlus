@@ -4,6 +4,7 @@
     import { AniLibriaParser, KodikParser } from "anixartjs";
     import { localStorageWritable } from "@babichjacob/svelte-localstorage";
     import DropdownButton from "../buttons/DropdownButton.svelte";
+    import { getReleasePositions } from "../../utils/watchPosition.js";
 
     const dispatch = createEventDispatcher();
 
@@ -16,6 +17,8 @@
         currentSourceName,
         playingSettings,
         episodes;
+
+    $: watchMap = getReleasePositions(args?.id);
 
     let dubberList = [];
     let dubbers = [];
@@ -144,15 +147,19 @@
 </script>
 
 {#snippet baseCard(x, clickCallback)}
+    {@const pos = watchMap.get(x.position || parseInt(x.name?.match(/\d+/)?.[0] || '1', 10) || 1)}
     <button class="base-card" onclick={clickCallback}>
         <div class="base-card-name">
             {x.name}
         </div>
         <div class="right-menu flex-row">
-            {#if x.is_watched}
+            {#if x.is_watched || pos?.completed}
                 <img src="./assets/icons/checkmark.svg" alt="check" />
             {/if}
         </div>
+        {#if pos && pos.percentage > 0 && !pos.completed}
+            <div class="episode-progress-bar" style="width: {pos.percentage}%"></div>
+        {/if}
     </button>
 {/snippet}
 
@@ -314,6 +321,18 @@
         height: 40px;
         min-height: 40px;
         border-radius: 7px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .episode-progress-bar {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        height: 3px;
+        background-color: var(--select-button-left-color);
+        border-radius: 0 2px 2px 0;
+        pointer-events: none;
     }
 
     .base-card:hover {

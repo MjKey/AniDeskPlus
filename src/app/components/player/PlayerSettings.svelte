@@ -80,6 +80,13 @@
                     />
                 </div>
                 <div class="player-settings-element">
+                    <span class="btn-title">Запоминать позицию:</span>
+                    <SliderButton
+                        value={playerSettings?.rememberPosition ?? true}
+                        onClickCallback={(value) => updatePlayerSetting("rememberPosition", value)}
+                    />
+                </div>
+                <div class="player-settings-element">
                     <span class="btn-title">Автопропуск опенинга:</span>
                     <SliderButton
                         value={playerSettings?.autoSkipOpening ?? false}
