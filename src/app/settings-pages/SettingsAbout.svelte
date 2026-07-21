@@ -29,7 +29,7 @@
             } else if (res.status === "latest") {
                 updateStatus = {
                     status: "latest",
-                    text: `У вас установлена последняя версия (v${res.currentVersion || versionInfo?.anidesk || "1.0.2"})`
+                    text: `У вас установлена последняя версия (v${res.currentVersion || versionInfo?.anidesk || ""})`
                 };
             } else {
                 updateStatus = {
@@ -76,7 +76,7 @@
         <div class="update-card flex-row">
             <div class="version-badge flex-column">
                 <span class="version-label">Версия приложения</span>
-                <span class="version-number">v{versionInfo?.anidesk ?? "1.0.2"}</span>
+                <span class="version-number">v{versionInfo?.anidesk || ""}</span>
             </div>
             <div class="update-actions flex-column">
                 <button class="update-btn flex-row" class:disabled={isChecking} onclick={checkUpdates}>
