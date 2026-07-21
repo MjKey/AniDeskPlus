@@ -47,7 +47,7 @@ discordRpcClient.on('ready', () => {
 
 const SettingsFirst = fs.existsSync(SettingsPath) ? JSON.parse(fs.readFileSync(SettingsPath)) : DefaultSettings;
 
-if (SettingsFirst.AutoUpdate) {
+if (app.isPackaged && SettingsFirst.AutoUpdate) {
   autoUpdater.on("checking-for-update", () => {
     console.log("checking-for-update");
   });
