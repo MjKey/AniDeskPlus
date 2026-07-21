@@ -147,6 +147,7 @@
 
         if (skipTimes.op && cTime >= skipTimes.op.start && cTime < skipTimes.op.end) {
             if (isAutoOp && !isOpAutoSkipped) {
+                console.log(`[Player] Auto-skipping OP from ${cTime.toFixed(1)}s to ${skipTimes.op.end}s`);
                 isOpAutoSkipped = true;
                 performSkipOp();
             } else if (!isAutoOp) {
@@ -154,6 +155,7 @@
             }
         } else if (skipTimes.ed && cTime >= skipTimes.ed.start && cTime < skipTimes.ed.end) {
             if (isAutoEd && !isEdAutoSkipped) {
+                console.log(`[Player] Auto-skipping ED from ${cTime.toFixed(1)}s to ${skipTimes.ed.end}s`);
                 isEdAutoSkipped = true;
                 performSkipEd();
             } else if (!isAutoEd) {
@@ -182,7 +184,8 @@
 
     function performSkipOp() {
         if (skipTimes.op && video) {
-            video.currentTime = skipTimes.op.end;
+            console.log(`[Player] Seeking past OP to ${skipTimes.op.end}s`);
+            video.currentTime = Number(skipTimes.op.end);
             showSkipToast("Опенинг пропущен");
             activeSkipType = null;
         }
@@ -190,7 +193,8 @@
 
     function performSkipEd() {
         if (skipTimes.ed && video) {
-            video.currentTime = skipTimes.ed.end;
+            console.log(`[Player] Seeking past ED to ${skipTimes.ed.end}s`);
+            video.currentTime = Number(skipTimes.ed.end);
             showSkipToast("Эндинг пропущен");
             activeSkipType = null;
         }
