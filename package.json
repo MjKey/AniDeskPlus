@@ -59,5 +59,8 @@
   },
   "allowScripts": {
     "electron@43.1.1": true
+  },
+  "overrides": {
+    "@electron/fuses": "$@electron/fuses"
   }
 }
