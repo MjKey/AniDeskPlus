@@ -21,7 +21,10 @@
     let playerSettings = utils.playerDefaultSettings;
 
     playerSettingsStore.subscribe((value) => {
-        if (value) playerSettings = value;
+        playerSettings = {
+            ...utils.playerDefaultSettings,
+            ...(value || {}),
+        };
     });
 
     function updatePlayerSetting(key, value) {

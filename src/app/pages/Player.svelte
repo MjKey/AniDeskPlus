@@ -134,7 +134,10 @@
     }
 
     playerSettingsStore.subscribe((value) => {
-        playerSettings = value;
+        playerSettings = {
+            ...utils.playerDefaultSettings,
+            ...(value || {}),
+        };
     });
 
     const playingSettingsRaw = localStorageWritable(
