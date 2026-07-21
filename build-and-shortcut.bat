@@ -6,19 +6,19 @@ echo AniDeskPlus - Build and Create Shortcut
 echo ==============================================
 echo.
 
-echo Выберите режим сборки:
-echo [1] Быстрая сборка (Рекомендуется для локальных тестов - без сжатия Terser, 5-10 сек)
-echo [2] Production сборка (Полная минификация)
+echo Select build mode:
+echo [1] Fast Build (Recommended for local testing - no Terser compression, 5-10s)
+echo [2] Production Build (Full minification)
 echo.
-choice /C 12 /N /D 1 /T 5 /M "Выберите вариант (1 или 2, автовыбор [1] через 5 сек): "
+choice /C 12 /N /D 1 /T 5 /M "Select option (1 or 2, auto-select [1] in 5s): "
 
 if errorlevel 2 (
     echo.
-    echo [INFO] Запуск Production сборки с пониженным приоритетом ЦП...
+    echo [INFO] Running Production Build with lower CPU priority...
     set "FAST_BUILD=false"
 ) else (
     echo.
-    echo [INFO] Запуск Быстрой сборки (Fast Build)...
+    echo [INFO] Running Fast Build...
     set "FAST_BUILD=true"
 )
 
