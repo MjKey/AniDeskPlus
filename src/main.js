@@ -5,7 +5,7 @@ const serve = require('electron-serve').default;
 const loadURL = serve({ directory: './public' });
 const fs = require('fs');
 const rpc = require("@xhayper/discord-rpc");
-const { initialize, trackEvent } = require("./aptabase/main");
+
 const { SibnetParser } = require('anixartjs');
 /**
  * @type {BrowserWindow}
@@ -19,7 +19,6 @@ const rpcClientId = '1372649290438148137';
 const SettingsPath = path.join(app.getPath("userData"), "settings.json");
 const DefaultSettings = {
   AutoUpdate: true,
-  EnableAnalytics: true,
   EnableRPC: false,
   EnableDevTools: false
 };
@@ -101,10 +100,7 @@ if (!isFirstInstance) {
 
 if (SettingsFirst.EnableRPC) discordRpcClient.login().catch(console.error);
 
-if (SettingsFirst.EnableAnalytics) {
-  initialize("A-EU-5850138901");
-  trackEvent("app_started");
-}
+
 
 function isDev() {
   return !app.isPackaged;
@@ -201,9 +197,7 @@ app.on('certificate-error', (event, webContents, url, error, certificate, callba
   callback(true);
 })
 
-ipcMain.handle("analytics:trackEvent", (_, eventName, props) => {
-  trackEvent(eventName, props);
-})
+ipcMain.handle("analytics:trackEvent", () => {});
 ipcMain.handle("settings:get", (_, key) => {
   const settings = fs.existsSync(SettingsPath) ? JSON.parse(fs.readFileSync(SettingsPath)) : DefaultSettings;
 

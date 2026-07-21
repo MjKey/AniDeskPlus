@@ -7,7 +7,7 @@ contextBridge.exposeInMainWorld('titleBarAPI', {
 });
 
 contextBridge.exposeInMainWorld('analytics', {
-  trackEvent: (eventName, props) => ipcRenderer.invoke("analytics:trackEvent", eventName, props)
+  trackEvent: () => {}
 });
 
 contextBridge.exposeInMainWorld('winApi', {

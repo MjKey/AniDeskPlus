@@ -63,12 +63,7 @@
         value={baseSettings.EnableRPC}
         onChangeCallback={(e) => updateMainKey("EnableRPC", e)}
     />
-    <CheckboxElement
-        title="Собирать анонимную аналитику"
-        description="Позволяет собирать анонимную аналитику об использовании приложения для улучшения функционала и исправления багов."
-        value={baseSettings.EnableAnalytics}
-        onChangeCallback={(e) => updateMainKey("EnableAnalytics", e)}
-    />
+
     <CheckboxElement
         title="Включить DevTools"
         description="Позволяет использовать DevTools в приложении, доступно только в бете."
