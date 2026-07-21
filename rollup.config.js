@@ -8,7 +8,10 @@ import { spawn } from 'child_process';
 import { string } from 'rollup-plugin-string'
 import svgo from 'rollup-plugin-svgo';
 
+import os from 'os';
+
 const production = !process.env.ROLLUP_WATCH;
+const fastBuild = process.env.FAST_BUILD === 'true';
 
 function serve() {
     let server;
@@ -62,8 +65,9 @@ export default {
         commonjs(),
         !production && serve(),
         !production && livereload('public'),
-        production && terser(),
-        
+        production && !fastBuild && terser({
+            maxWorkers: Math.max(1, Math.floor(os.cpus().length / 2))
+        }),
     ],
     watch: {
         clearScreen: false
