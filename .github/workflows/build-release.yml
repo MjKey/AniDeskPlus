@@ -39,7 +39,7 @@ jobs:
         with:
           draft: true
           prerelease: false
-          name: Release ${{ github.ref_name }}
+          name: AniDesk Plus ${{ github.ref_name }}
           files: |
             out/make/**/*
         env:
