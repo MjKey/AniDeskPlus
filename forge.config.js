@@ -5,9 +5,9 @@ const package = require('./package.json');
 module.exports = {
   packagerConfig: {
     asar: true,
-    appBundleId: "com.ds1nc.anidesk",
-    name: "AniDesk",
-    appCopyright: "DesConnet, hack1exe",
+    appBundleId: "com.mjkey.anideskplus",
+    name: "AniDeskPlus",
+    appCopyright: "DesConnet, hack1exe, MjKey",
     icon: "icon/icon",
   },
   rebuildConfig: {},
@@ -15,9 +15,9 @@ module.exports = {
     {
       name: '@electron-forge/maker-squirrel',
       config: {
-        name: 'AniDesk',
+        name: 'AniDeskPlus',
         iconUrl: "https://anidesk.ds1nc.ru/anidesk-icon.ico",
-        setupExe: `${package.name}-${package.version}-win32.exe`,
+        setupExe: `AniDeskPlus-${package.version}-win32.exe`,
         setupIcon: 'icon/icon.ico',
         loadingGif: 'icon/install-anim.gif'
       },
@@ -30,8 +30,8 @@ module.exports = {
       name: '@electron-forge/maker-deb',
       config: {
         options: {
-          name: "anidesk",
-          productName: "AniDesk",
+          name: "anideskplus",
+          productName: "AniDeskPlus",
           icon: "icon/icon.ico",
           maintainer: 'DesConnet, hack1exe',
           homepage: "https://anidesk.ds1nc.ru",

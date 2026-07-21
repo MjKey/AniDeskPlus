@@ -43,9 +43,9 @@ if %ERRORLEVEL% neq 0 (
 echo.
 echo Step 3: Creating Desktop shortcut...
 
-set "EXE_PATH=%~dp0out\AniDesk-win32-x64\AniDesk.exe"
-set "WORK_DIR=%~dp0out\AniDesk-win32-x64"
-set "SHORTCUT=%USERPROFILE%\Desktop\AniDesk.lnk"
+set "EXE_PATH=%~dp0out\AniDeskPlus-win32-x64\AniDeskPlus.exe"
+set "WORK_DIR=%~dp0out\AniDeskPlus-win32-x64"
+set "SHORTCUT=%USERPROFILE%\Desktop\AniDeskPlus.lnk"
 
 if exist "%EXE_PATH%" (
     powershell -NoProfile -NonInteractive -Command "$ws = New-Object -ComObject WScript.Shell; $s = $ws.CreateShortcut('%SHORTCUT%'); $s.TargetPath = '%EXE_PATH%'; $s.WorkingDirectory = '%WORK_DIR%'; $s.Description = 'AniDeskPlus'; $s.Save()"

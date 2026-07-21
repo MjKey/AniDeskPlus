@@ -37,7 +37,7 @@
             />
         </svg>
     </div>
-    <div class="title-bar-text unselectable">AniDesk <sup>β</sup></div>
+    <div class="title-bar-text unselectable">AniDeskPlus <sup>β</sup></div>
     <button
         class="title-bar-minimize button-title-bar"
         onclick={titleBarAPI.minimize()}

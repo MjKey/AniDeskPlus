@@ -11,7 +11,7 @@
             alt="icon"
         />
         <div class="app-info flex-column">
-            <span class="app-title">AniDesk</span>
+            <span class="app-title">AniDeskPlus</span>
             <p class="app-description">
                 Неофициальный десктоп-клиент для приложения <strong
                     >Anixart</strong

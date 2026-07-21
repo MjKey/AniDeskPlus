@@ -73,7 +73,7 @@
 
             meta = {
               description = "Unofficial desktop client of Anixart";
-              homepage = "https://github.com/theDesConnet/AniDeskPlus";
+              homepage = "https://github.com/MjKey/AniDeskPlus";
               license = lib.licenses.gpl2Only;
               mainProgram = "anidesk";
               platforms = systems;

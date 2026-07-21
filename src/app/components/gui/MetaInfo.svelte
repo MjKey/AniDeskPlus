@@ -1,6 +1,6 @@
 <script>
     export let subTitle;
-    export let title = "AniDesk";
+    export let title = "AniDeskPlus";
 </script>
 
 <svelte:head>

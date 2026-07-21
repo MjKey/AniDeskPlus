@@ -45,7 +45,7 @@
         }}>Выйти</button>
         <Separator marginRight={22}/>
         <div class="build-info flex-column">
-            <span class="third-text">AniDesk v{window.versions.anidesk}</span>
+            <span class="third-text">AniDeskPlus v{window.versions.anidesk}</span>
             <span class="third-text">NodeJS v{window.versions.node}</span>
             <span class="third-text">Electron v{window.versions.electron}</span>
             <span class="third-text">Chrome v{window.versions.chrome}</span>

@@ -1,5 +1,5 @@
 {
-  "name": "anidesk",
+  "name": "anideskplus",
   "version": "1.0.1",
   "description": "Unofficial desktop client of Anixart",
   "main": "./src/main.js",
@@ -18,7 +18,7 @@
   "keywords": [
     "anixart"
   ],
-  "author": "DesConnet, hack1exe",
+  "author": "DesConnet, hack1exe, MjKey",
   "license": "ISC",
   "devDependencies": {
     "@babichjacob/svelte-localstorage": "^1.1.2",
