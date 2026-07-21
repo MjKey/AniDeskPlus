@@ -38,8 +38,7 @@ function getEpisodeNumber(episode) {
 function buildKey(releaseId, episode) {
     if (!releaseId) return null;
     const epNum = getEpisodeNumber(episode);
-    const epId = episode?.id || '';
-    return `${releaseId}_ep${epNum}${epId ? `_id${epId}` : ''}`;
+    return `${releaseId}_ep${epNum}`;
 }
 
 /**

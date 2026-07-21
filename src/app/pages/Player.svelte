@@ -102,32 +102,68 @@
     let hasRestoredPosition = false;
     let lastWatchSaveTime = 0;
 
+    function getReleaseId() {
+        return args?.release?.id || args?.id || null;
+    }
+
     function performRestartVideo() {
         if (video) {
             video.currentTime = 0;
             resumeToastMessage = null;
+            const relId = getReleaseId();
             const ep = currentEpisode || args?.currentEpisode;
-            if (args?.release?.id && ep) {
-                clearPosition(args.release.id, ep);
+            if (relId && ep) {
+                clearPosition(relId, ep);
             }
         }
     }
 
+    function tryRestoreWatchPosition() {
+        if (hasRestoredPosition || playerSettings?.rememberPosition === false || !video || !video.duration) return;
+
+        const relId = getReleaseId();
+        const ep = currentEpisode || args?.currentEpisode;
+        if (!relId || !ep) {
+            console.log('[WatchPosition] Restore check skipped: relId or ep missing', { relId, ep });
+            return;
+        }
+
+        const saved = getSavedPosition(relId, ep);
+        console.log(`[WatchPosition] Restoring check for relId=${relId}, ep=${ep.position || ep.name}:`, saved);
+
+        if (saved && typeof saved.time === 'number' && saved.time > 5 && !saved.completed && (video.duration - saved.time) > 15) {
+            console.log(`[WatchPosition] Restored video time to ${saved.time}s`);
+            video.currentTime = saved.time;
+            hasRestoredPosition = true;
+            resumeToastMessage = `Продолжено с ${utils.returnFormatedTime(saved.time)}`;
+            if (resumeToastTimeout) clearTimeout(resumeToastTimeout);
+            resumeToastTimeout = setTimeout(() => {
+                resumeToastMessage = null;
+            }, 6000);
+        } else {
+            hasRestoredPosition = true;
+        }
+    }
+
     function trySaveWatchPosition() {
-        if (!playerSettings?.rememberPosition || !video || !video.duration || isNaN(video.currentTime)) return;
+        if (playerSettings?.rememberPosition === false || !video || !video.duration || isNaN(video.currentTime)) return;
         const now = Date.now();
-        if (now - lastWatchSaveTime >= 3000) {
+        if (now - lastWatchSaveTime >= 2000) {
             lastWatchSaveTime = now;
+            const relId = getReleaseId();
             const ep = currentEpisode || args?.currentEpisode;
-            if (args?.release?.id && ep) {
-                savePosition(args.release.id, ep, video.currentTime, video.duration);
+            if (relId && ep) {
+                console.log(`[WatchPosition] Saving position: relId=${relId}, ep=${ep.position || ep.name}, time=${video.currentTime.toFixed(1)}s / ${video.duration.toFixed(1)}s`);
+                savePosition(relId, ep, video.currentTime, video.duration);
             }
         }
     }
 
     onDestroy(() => {
-        if (video && video.duration && args?.release?.id && (currentEpisode || args?.currentEpisode)) {
-            savePosition(args.release.id, currentEpisode || args.currentEpisode, video.currentTime, video.duration);
+        const relId = getReleaseId();
+        const ep = currentEpisode || args?.currentEpisode;
+        if (video && video.duration && relId && ep) {
+            savePosition(relId, ep, video.currentTime, video.duration);
         }
     });
 
@@ -740,20 +776,7 @@
         video.onloadedmetadata = () => {
             loading = true;
             durationTime = utils.returnFormatedTime(video.duration);
-
-            if (playerSettings?.rememberPosition !== false && !hasRestoredPosition) {
-                const ep = currentEpisode || args?.currentEpisode;
-                const saved = getSavedPosition(args?.release?.id, ep);
-                if (saved && saved.time > 5 && !saved.completed && (video.duration - saved.time) > 15) {
-                    video.currentTime = saved.time;
-                    hasRestoredPosition = true;
-                    resumeToastMessage = `Продолжено с ${utils.returnFormatedTime(saved.time)}`;
-                    if (resumeToastTimeout) clearTimeout(resumeToastTimeout);
-                    resumeToastTimeout = setTimeout(() => {
-                        resumeToastMessage = null;
-                    }, 6000);
-                }
-            }
+            tryRestoreWatchPosition();
         };
 
         video.onwaiting = () => {
@@ -762,11 +785,14 @@
 
         video.onplaying = () => {
             loading = false;
+            tryRestoreWatchPosition();
         };
 
         video.onended = () => {
-            if (args?.release?.id && (currentEpisode || args?.currentEpisode) && video.duration) {
-                savePosition(args.release.id, currentEpisode || args.currentEpisode, video.duration, video.duration);
+            const relId = getReleaseId();
+            const ep = currentEpisode || args?.currentEpisode;
+            if (relId && ep && video.duration) {
+                savePosition(relId, ep, video.duration, video.duration);
             }
             if (playerSettings.autoplayEpisode) {
                 playNextEpisode();
@@ -783,6 +809,7 @@
             currentTime = utils.returnFormatedTime(video.currentTime);
             progressPercent = (video.currentTime / video.duration) * 100;
 
+            tryRestoreWatchPosition();
             trySaveWatchPosition();
             checkAndTriggerSkip(video.currentTime);
         };
