@@ -1,4 +1,8 @@
-const { app, BrowserWindow, ipcMain, net, autoUpdater, dialog } = require('electron')
+const { app, BrowserWindow, ipcMain, net, autoUpdater, dialog } = require('electron');
+if (require('electron-squirrel-startup')) {
+  app.quit();
+  process.exit(0);
+}
 const path = require('node:path')
 const o = require('openurl');
 const serve = require('electron-serve').default;
@@ -90,7 +94,7 @@ if (app.isPackaged && SettingsFirst.AutoUpdate) {
   }, 10000);
 }
 
-if (require('electron-squirrel-startup')) app.quit();
+
 
 const isFirstInstance = app.requestSingleInstanceLock();
 

@@ -18,7 +18,7 @@
   "keywords": [
     "anixart"
   ],
-  "author": "DesConnet, hack1exe, MjKey",
+  "author": "AniDeskPlus",
   "license": "ISC",
   "devDependencies": {
     "@babichjacob/svelte-localstorage": "^1.1.2",

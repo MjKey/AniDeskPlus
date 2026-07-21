@@ -7,7 +7,7 @@ module.exports = {
     asar: true,
     appBundleId: "com.mjkey.anideskplus",
     name: "AniDeskPlus",
-    appCopyright: "DesConnet, hack1exe, MjKey",
+    appCopyright: "AniDeskPlus",
     icon: "icon/icon",
   },
   rebuildConfig: {},
@@ -16,6 +16,7 @@ module.exports = {
       name: '@electron-forge/maker-squirrel',
       config: {
         name: 'AniDeskPlus',
+        authors: 'AniDeskPlus',
         iconUrl: "https://anidesk.ds1nc.ru/anidesk-icon.ico",
         setupExe: `AniDeskPlus-${package.version}-win32.exe`,
         setupIcon: 'icon/icon.ico',
