@@ -141,7 +141,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       sandbox: true,
-      devTools: true
+      devTools: SettingsFirst.EnableDevTools
     },
     icon: "./public/assets/icons/anidesk-icon.png",
     show: false,
