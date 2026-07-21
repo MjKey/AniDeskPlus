@@ -23,6 +23,12 @@
     export let upscaleEnabled;
     export let changeAspectRatio;
     export let aspectRatio;
+    export let changeSleepTimer;
+    export let sleepTimerLabel = "Выкл";
+    export let activeSkipType = null;
+    export let skipToastMessage = null;
+    export let performSkipOp = null;
+    export let performSkipEd = null;
 
     let showTimelineMouse = false;
     let showSettings = false;
@@ -152,6 +158,7 @@
                         argsElement.value.id,
                         s.sources[0].id,
                     );
+                    if (ep?.episodes) utils.sortEpisodes(ep.episodes);
 
                     type = "episodes";
                     value = s.sources[0];
@@ -190,6 +197,7 @@
                     dubber.id,
                     argsElement.value.id,
                 );
+                if (ep?.episodes) utils.sortEpisodes(ep.episodes);
                 argsElement.nextPage(
                     argsElement.value,
                     ep.episodes.map((x) => ({
@@ -379,10 +387,12 @@
                 avaliableQuality: args.avaliableQuality,
                 upscaleEnabled,
                 aspectRatio,
+                sleepTimerLabel,
             }}
             {changeQuality}
             {changeUpscale}
             {changeAspectRatio}
+            {changeSleepTimer}
             {video}
         />
     </div>
@@ -587,9 +597,67 @@
             </div>
         </div>
     </div>
+
+    {#if skipToastMessage}
+        <div class="skip-toast">
+            {skipToastMessage}
+        </div>
+    {/if}
+
+    {#if activeSkipType}
+        <button
+            class="skip-interval-button flex-row"
+            onclick={() => {
+                if (activeSkipType === 'op' && performSkipOp) performSkipOp();
+                if (activeSkipType === 'ed' && performSkipEd) performSkipEd();
+            }}
+        >
+            <img src="./assets/icons/skipOp.svg" alt="skip" width="20px" height="20px" />
+            <span>Пропустить {activeSkipType === 'op' ? 'опенинг' : 'эндинг'}</span>
+        </button>
+    {/if}
 </div>
 
 <style>
+    .skip-toast {
+        position: absolute;
+        bottom: 110px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.85);
+        color: var(--main-text-color);
+        padding: 10px 22px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: bold;
+        border: 1px solid var(--select-button-left-color);
+        z-index: 10;
+        pointer-events: none;
+    }
+
+    .skip-interval-button {
+        position: absolute;
+        bottom: 120px;
+        right: 40px;
+        background: var(--select-button-left-color);
+        color: var(--main-text-color);
+        padding: 12px 22px;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: bold;
+        cursor: pointer;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    .skip-interval-button:hover {
+        transform: scale(1.05);
+        background: var(--player-middle-button-select);
+    }
     .player-gui {
         width: 100%;
         height: 100%;

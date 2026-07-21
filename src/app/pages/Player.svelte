@@ -32,6 +32,7 @@
     import { AniLibriaParser, SibnetParser, KodikParser } from "anixartjs";
     import { playerSettingsStore } from "../components/stores/pageHistory.js";
     import utils from "../utils";
+    import { getSkipTimes } from "../utils/skipTimes.js";
 
     const upscaleModeMap = {
         0: DoG,
@@ -88,6 +89,50 @@
     let isHidden, isPaused, isTimePosClick, isFullscreen;
     let pressedKeys = new Set();
 
+    let skipTimes = { op: null, ed: null };
+    let activeSkipType = null;
+    let isOpAutoSkipped = false;
+    let isEdAutoSkipped = false;
+    let skipToastMessage = null;
+    let skipToastTimeout = null;
+
+    function showSkipToast(msg) {
+        skipToastMessage = msg;
+        if (skipToastTimeout) clearTimeout(skipToastTimeout);
+        skipToastTimeout = setTimeout(() => {
+            skipToastMessage = null;
+        }, 3000);
+    }
+
+    async function updateSkipTimes() {
+        isOpAutoSkipped = false;
+        isEdAutoSkipped = false;
+        activeSkipType = null;
+        skipTimes = { op: null, ed: null };
+
+        if (!args || !args.release) return;
+        const ep = currentEpisode || args.currentEpisode;
+        const currentSourceName = args.episodes?.[0]?.source?.name ?? null;
+
+        skipTimes = await getSkipTimes(args.release, ep, currentSourceName);
+    }
+
+    function performSkipOp() {
+        if (skipTimes.op && video) {
+            video.currentTime = skipTimes.op.end;
+            showSkipToast("Опенинг пропущен");
+            activeSkipType = null;
+        }
+    }
+
+    function performSkipEd() {
+        if (skipTimes.ed && video) {
+            video.currentTime = skipTimes.ed.end;
+            showSkipToast("Эндинг пропущен");
+            activeSkipType = null;
+        }
+    }
+
     playerSettingsStore.subscribe((value) => {
         playerSettings = value;
     });
@@ -111,6 +156,89 @@
     });
 
     let upscaleEnabled = upscaleSettings.enabled;
+
+    let sleepTimerType = 'off';
+    let sleepTimerValue = 0;
+    let sleepEpisodesRemaining = 0;
+    let sleepTimerInterval = null;
+    let sleepTimerEndTime = null;
+    let sleepTimerLabel = "Выкл";
+
+    function clearSleepTimer() {
+        if (sleepTimerInterval) {
+            clearInterval(sleepTimerInterval);
+            sleepTimerInterval = null;
+        }
+        sleepTimerEndTime = null;
+        sleepTimerType = 'off';
+        sleepTimerValue = 0;
+        sleepEpisodesRemaining = 0;
+        sleepTimerLabel = "Выкл";
+    }
+
+    async function executeSleepTimerAction() {
+        clearSleepTimer();
+        const action = playingSettings?.sleepTimerAction ?? "pause";
+
+        switch (action) {
+            case "pause":
+                if (video) video.pause();
+                break;
+            case "closePlayer":
+                if (video) video.pause();
+                updateViewportComponent(8, { id: args.release.id });
+                break;
+            case "closeApp":
+                if (video) video.pause();
+                systemPower.quitApp();
+                break;
+            case "sleep":
+                if (video) video.pause();
+                systemPower.sleep();
+                break;
+            case "shutdown":
+                if (video) video.pause();
+                systemPower.shutdown();
+                break;
+        }
+    }
+
+    function changeSleepTimer(config) {
+        clearSleepTimer();
+        if (!config || config.type === 'off') {
+            sleepTimerLabel = "Выкл";
+            return;
+        }
+
+        if (config.type === 'episodes') {
+            const count = Math.max(1, parseInt(config.count || 1, 10));
+            sleepTimerType = 'episodes';
+            sleepEpisodesRemaining = count;
+            sleepTimerLabel = count === 1 ? "1 серия" : `${count} с.`;
+            return;
+        }
+
+        if (config.type === 'minutes') {
+            const mins = Math.max(1, parseInt(config.minutes || 1, 10));
+            sleepTimerType = 'minutes';
+            sleepTimerValue = mins;
+            sleepTimerLabel = `${mins} мин.`;
+            sleepTimerEndTime = Date.now() + mins * 60 * 1000;
+
+            sleepTimerInterval = setInterval(() => {
+                if (!sleepTimerEndTime) return;
+                const remainingSec = Math.round((sleepTimerEndTime - Date.now()) / 1000);
+
+                if (remainingSec <= 0) {
+                    executeSleepTimerAction();
+                } else {
+                    const m = Math.floor(remainingSec / 60);
+                    const s = remainingSec % 60;
+                    sleepTimerLabel = `${m}:${s < 10 ? "0" + s : s}`;
+                }
+            }, 1000);
+        }
+    }
 
     async function changeUpscale(enabled) {
         upscaleEnabled = enabled;
@@ -305,6 +433,7 @@
     });
 
     async function playVideo(episode) {
+        updateSkipTimes();
         let avaliableQuality, link;
         let source =
             typeof episode.source == "number"
@@ -551,6 +680,34 @@
             syncPersistedVolume();
         };
 
+        video.ontimeupdate = () => {
+            if (!video || !video.duration) return;
+            currentTime = utils.returnFormatedTime(video.currentTime);
+            progressPercent = (video.currentTime / video.duration) * 100;
+
+            const cTime = video.currentTime;
+
+            if (skipTimes.op && cTime >= skipTimes.op.start && cTime < skipTimes.op.end) {
+                if (playerSettings.autoSkipOpening && !isOpAutoSkipped) {
+                    isOpAutoSkipped = true;
+                    performSkipOp();
+                } else if (!playerSettings.autoSkipOpening) {
+                    activeSkipType = 'op';
+                }
+            } else if (skipTimes.ed && cTime >= skipTimes.ed.start && cTime < skipTimes.ed.end) {
+                if (playerSettings.autoSkipEnding && !isEdAutoSkipped) {
+                    isEdAutoSkipped = true;
+                    performSkipEd();
+                } else if (!playerSettings.autoSkipEnding) {
+                    activeSkipType = 'ed';
+                }
+            } else {
+                activeSkipType = null;
+            }
+        };
+
+        updateSkipTimes();
+
         if (avaliableGPU) await renderUpscale();
         await video.play();
 
@@ -595,7 +752,13 @@
                             break;
 
                         case "hotkeySkipOpening":
-                            video.currentTime += 85;
+                            if (skipTimes.op && video.currentTime >= skipTimes.op.start && video.currentTime < skipTimes.op.end) {
+                                performSkipOp();
+                            } else if (skipTimes.ed && video.currentTime >= skipTimes.ed.start && video.currentTime < skipTimes.ed.end) {
+                                performSkipEd();
+                            } else {
+                                video.currentTime += 85;
+                            }
                             break;
 
                         case "hotkeyNextEpisode":
@@ -714,6 +877,16 @@
         };
 
         video.onended = async () => {
+            if (sleepTimerType === 'episodes') {
+                sleepEpisodesRemaining--;
+                if (sleepEpisodesRemaining <= 0) {
+                    await executeSleepTimerAction();
+                    return;
+                } else {
+                    sleepTimerLabel = sleepEpisodesRemaining === 1 ? "1 серия" : `${sleepEpisodesRemaining} с.`;
+                }
+            }
+
             if (playerSettings.autoplayEpisode) {
                 let e = args.episodes.find(
                     (x) => x.position == currentEpisode.position + 1,
@@ -768,6 +941,7 @@
     }
 
     onDestroy(() => {
+        clearSleepTimer();
         //Destroy all event listeners
         if (hls) {
             hls.detachMedia();
@@ -823,10 +997,16 @@
         {changeUpscale}
         {upscaleEnabled}
         {changeAspectRatio}
+        {changeSleepTimer}
+        {sleepTimerLabel}
         aspectRatio={utils.aspectRatioValues.find(
             (x) => x.value == playerSettings.defaultAspectRatio,
         ).label}
         bind:volumePercent={volPercent}
+        {activeSkipType}
+        {skipToastMessage}
+        {performSkipOp}
+        {performSkipEd}
     />
 
     <span class:hide={!loading} class="loader"></span>

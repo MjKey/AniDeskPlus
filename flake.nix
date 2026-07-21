@@ -27,7 +27,7 @@
 
           anidesk = pkgs.buildNpmPackage rec {
             pname = "anidesk";
-            version = "1.0.1";
+            version = "1.0.2";
 
             src = ./.;
             npmDepsHash = "sha256-77QcTHHZjHPZ40z8yrGYfZLVDIQoP1utSEBYIIkG5ew=";

@@ -14,6 +14,9 @@ module.exports = {
 
     playerDefaultSettings: {
         autoplayEpisode: true,
+        autoSkipOpening: false,
+        autoSkipEnding: false,
+        showSkipButtons: true,
         defaultAspectRatio: "16-9",
         saveUserVolume: {
             enabled: false,
@@ -44,6 +47,7 @@ module.exports = {
         defaultSource: null,
         disableHistory: false,
         rememberSelection: true,
+        sleepTimerAction: "pause",
         lastDubberId: null,
         lastDubberName: null,
         lastSourceId: null,
@@ -109,6 +113,22 @@ module.exports = {
         { label: "1.5x", value: 1.5 },
         { label: "1.75x", value: 1.75 },
         { label: "2x", value: 2.0 }
+    ],
+
+    sleepTimerActionValues: [
+        { label: "Поставить на паузу", value: "pause" },
+        { label: "Закрыть плеер", value: "closePlayer" },
+        { label: "Закрыть приложение", value: "closeApp" },
+        { label: "Погрузить ПК в сон", value: "sleep" },
+        { label: "Выключить компьютер", value: "shutdown" },
+    ],
+
+    sleepTimerDurationValues: [
+        { label: "Выкл", type: "off" },
+        { label: "Через 1 серию", type: "episodes", count: 1 },
+        { label: "Через 2 серии", type: "episodes", count: 2 },
+        { label: "Через 3 серии", type: "episodes", count: 3 },
+        { label: "Через 5 серий", type: "episodes", count: 5 },
     ],
 
     collectionSortValues: [
@@ -252,5 +272,19 @@ module.exports = {
             if (success) return;
             await new Promise(r => setTimeout(r, 500));
         }
+    },
+
+    sortEpisodes(episodes) {
+        if (!Array.isArray(episodes)) return episodes;
+        return episodes.sort((a, b) => {
+            const posA = typeof a.position === 'number' && a.position > 0 ? a.position : null;
+            const posB = typeof b.position === 'number' && b.position > 0 ? b.position : null;
+            if (posA !== null && posB !== null) {
+                return posA - posB;
+            }
+            const numA = parseInt(a.name?.match(/\d+/)?.[0] || '0', 10);
+            const numB = parseInt(b.name?.match(/\d+/)?.[0] || '0', 10);
+            return numA - numB;
+        });
     }
 };

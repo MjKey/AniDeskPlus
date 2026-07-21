@@ -28,6 +28,7 @@
 
     <DropdownElement title="Качество видео по умолчанию" values={utils.qualityValues} value={playingSettings.defaultQuality} placeholder="Выберите качество" onChangeCallback={(e, v) => updateKey('defaultQuality', v)} />
     <DropdownElement title="Источник по умолчанию (Если доступен)" values={utils.sourceValues} value={playingSettings.defaultSource} placeholder="Выберите источник" onChangeCallback={(e, v) => updateKey('defaultSource', v)} />
+    <DropdownElement title="Действие по таймеру сна" values={utils.sleepTimerActionValues} value={playingSettings.sleepTimerAction ?? "pause"} placeholder="Выберите действие" onChangeCallback={(e, v) => updateKey('sleepTimerAction', v)} />
 </div>
 
 <style>

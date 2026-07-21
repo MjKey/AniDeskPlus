@@ -209,6 +209,25 @@ app.on('certificate-error', (event, webContents, url, error, certificate, callba
 })
 
 ipcMain.handle("analytics:trackEvent", () => {});
+ipcMain.handle("power:sleep", () => {
+  const { exec } = require('child_process');
+  if (process.platform === 'win32') {
+    exec('rundll32.exe powrprof.dll,SetSuspendState 0,1,0');
+  } else if (process.platform === 'linux') {
+    exec('systemctl suspend');
+  }
+});
+ipcMain.handle("power:shutdown", () => {
+  const { exec } = require('child_process');
+  if (process.platform === 'win32') {
+    exec('shutdown /s /t 0');
+  } else if (process.platform === 'linux') {
+    exec('shutdown -h now');
+  }
+});
+ipcMain.handle("app:quit", () => {
+  app.quit();
+});
 ipcMain.handle("settings:get", (_, key) => {
   const settings = fs.existsSync(SettingsPath) ? JSON.parse(fs.readFileSync(SettingsPath)) : DefaultSettings;
 

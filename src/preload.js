@@ -14,6 +14,12 @@ contextBridge.exposeInMainWorld('winApi', {
   openLink: (link) => ipcRenderer.invoke('winApi:openLink', link),
 });
 
+contextBridge.exposeInMainWorld('systemPower', {
+  sleep: () => ipcRenderer.invoke('power:sleep'),
+  shutdown: () => ipcRenderer.invoke('power:shutdown'),
+  quitApp: () => ipcRenderer.invoke('app:quit'),
+});
+
 contextBridge.exposeInMainWorld('Sibnet', {
   Parse: (link) => ipcRenderer.invoke('sibnet:parse', link),
 });

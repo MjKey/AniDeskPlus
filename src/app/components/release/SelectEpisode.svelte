@@ -129,11 +129,17 @@
             return { episodes: [] };
         }
 
-        return await anixApi.release.getEpisodes(
+        const res = await anixApi.release.getEpisodes(
             args.id,
             currentDubberId,
             currentSourceId,
         );
+
+        if (res?.episodes) {
+            utils.sortEpisodes(res.episodes);
+        }
+
+        return res;
     }
 </script>
 
