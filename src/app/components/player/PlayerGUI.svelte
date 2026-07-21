@@ -26,6 +26,7 @@
     export let changeSleepTimer;
     export let sleepTimerLabel = "Выкл";
     export let activeSkipType = null;
+    export let hasSkipTimes = false;
     export let skipToastMessage = null;
     export let performSkipOp = null;
     export let performSkipEd = null;
@@ -403,8 +404,13 @@
                     <div class="time-info flex-row">
                         <span id="current-time">{currentTime ?? "00:00"}</span>
                         <span class="delimiter">/</span>
-                        <span id="duration-time">{durationTime ?? "00:00"}</span
-                        >
+                        <span id="duration-time">{durationTime ?? "00:00"}</span>
+                        {#if hasSkipTimes}
+                            <div class="skip-indicator flex-row" title="Таймкоды автопропуска найдены">
+                                <span class="indicator-dot"></span>
+                                <span>OP/ED</span>
+                            </div>
+                        {/if}
                     </div>
                 </div>
             </div>
@@ -619,6 +625,28 @@
 </div>
 
 <style>
+    .skip-indicator {
+        align-items: center;
+        gap: 6px;
+        background: rgba(46, 204, 113, 0.15);
+        color: #2ecc71;
+        border: 1px solid rgba(46, 204, 113, 0.4);
+        padding: 3px 10px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-left: 12px;
+        user-select: none;
+    }
+
+    .indicator-dot {
+        width: 7px;
+        height: 7px;
+        background-color: #2ecc71;
+        border-radius: 50%;
+        box-shadow: 0 0 8px #2ecc71;
+    }
+
     .skip-toast {
         position: absolute;
         bottom: 110px;

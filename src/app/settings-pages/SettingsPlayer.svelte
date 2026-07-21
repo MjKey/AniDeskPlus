@@ -40,18 +40,6 @@
         onChangeCallback={(e) => updateKey("autoplayEpisode", e)}
     />
     <CheckboxElement
-        title="Автопропуск опенингов"
-        description="Автоматически перематывать опенинги при обнаружении таймкодов."
-        value={playerSettings.autoSkipOpening}
-        onChangeCallback={(e) => updateKey("autoSkipOpening", e)}
-    />
-    <CheckboxElement
-        title="Автопропуск эндингов"
-        description="Автоматически перематывать эндинги при обнаружении таймкодов."
-        value={playerSettings.autoSkipEnding}
-        onChangeCallback={(e) => updateKey("autoSkipEnding", e)}
-    />
-    <CheckboxElement
         title="Запоминать позицию просмотра (В разработке)"
         description="Серия продолжается с того места, где вы остановились."
         disabled={true}

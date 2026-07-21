@@ -294,4 +294,37 @@ ipcMain.handle("prc:getVersions", (_) => {
     anidesk: app.getVersion(),
     node: process.versions.node
   };
-})
+});
+
+ipcMain.handle("updater:check", async (_) => {
+  const currentVersion = app.getVersion();
+  if (app.isPackaged && autoUpdater) {
+    try {
+      autoUpdater.checkForUpdates();
+    } catch (e) {
+      console.error("AutoUpdater error:", e);
+    }
+  }
+
+  try {
+    const res = await net.fetch("https://api.github.com/repos/MjKey/AniDeskPlus/releases/latest", {
+      headers: { "User-Agent": "AniDeskPlusApp" }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const latestTag = (data.tag_name || "").replace(/^v/, "");
+      const isNewer = latestTag && latestTag !== currentVersion;
+      return {
+        status: isNewer ? "update_available" : "latest",
+        latestVersion: latestTag,
+        currentVersion,
+        releaseUrl: data.html_url || "https://github.com/MjKey/AniDeskPlus/releases"
+      };
+    }
+  } catch (e) {
+    console.error("GitHub release check error:", e);
+    return { status: "error", message: e.message, currentVersion };
+  }
+
+  return { status: "latest", currentVersion };
+});
