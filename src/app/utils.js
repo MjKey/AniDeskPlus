@@ -15,8 +15,8 @@ module.exports = {
     playerDefaultSettings: {
         autoplayEpisode: true,
         rememberPosition: true,
-        autoSkipOpening: true,
-        autoSkipEnding: true,
+        autoSkipOpening: false,
+        autoSkipEnding: false,
         showSkipButtons: true,
         defaultAspectRatio: "16-9",
         saveUserVolume: {

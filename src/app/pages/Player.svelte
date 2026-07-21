@@ -142,8 +142,10 @@
     function checkAndTriggerSkip(cTime) {
         if (!video || !video.duration || cTime == null) return;
 
+        const isAutoOp = Boolean(playerSettings?.autoSkipOpening);
+        const isAutoEd = Boolean(playerSettings?.autoSkipEnding);
+
         if (skipTimes.op && cTime >= skipTimes.op.start && cTime < skipTimes.op.end) {
-            const isAutoOp = playerSettings?.autoSkipOpening !== false;
             if (isAutoOp && !isOpAutoSkipped) {
                 isOpAutoSkipped = true;
                 performSkipOp();
@@ -151,7 +153,6 @@
                 activeSkipType = 'op';
             }
         } else if (skipTimes.ed && cTime >= skipTimes.ed.start && cTime < skipTimes.ed.end) {
-            const isAutoEd = playerSettings?.autoSkipEnding !== false;
             if (isAutoEd && !isEdAutoSkipped) {
                 isEdAutoSkipped = true;
                 performSkipEd();

@@ -141,10 +141,17 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       sandbox: true,
-      devTools: SettingsFirst.EnableDevTools
+      devTools: true
     },
     icon: "./public/assets/icons/anidesk-icon.png",
     show: false,
+  });
+
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i')) {
+      mainWindow.webContents.toggleDevTools();
+      event.preventDefault();
+    }
   });
 
   if (isDev()) {
