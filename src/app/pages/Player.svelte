@@ -139,6 +139,30 @@
         }, 3000);
     }
 
+    function checkAndTriggerSkip(cTime) {
+        if (!video || !video.duration || cTime == null) return;
+
+        if (skipTimes.op && cTime >= skipTimes.op.start && cTime < skipTimes.op.end) {
+            const isAutoOp = playerSettings?.autoSkipOpening !== false;
+            if (isAutoOp && !isOpAutoSkipped) {
+                isOpAutoSkipped = true;
+                performSkipOp();
+            } else if (!isAutoOp) {
+                activeSkipType = 'op';
+            }
+        } else if (skipTimes.ed && cTime >= skipTimes.ed.start && cTime < skipTimes.ed.end) {
+            const isAutoEd = playerSettings?.autoSkipEnding !== false;
+            if (isAutoEd && !isEdAutoSkipped) {
+                isEdAutoSkipped = true;
+                performSkipEd();
+            } else if (!isAutoEd) {
+                activeSkipType = 'ed';
+            }
+        } else {
+            activeSkipType = null;
+        }
+    }
+
     async function updateSkipTimes() {
         isOpAutoSkipped = false;
         isEdAutoSkipped = false;
@@ -150,6 +174,9 @@
         const currentSourceName = args.episodes?.[0]?.source?.name ?? null;
 
         skipTimes = await getSkipTimes(args.release, ep, currentSourceName);
+        if (video && video.currentTime != null) {
+            checkAndTriggerSkip(video.currentTime);
+        }
     }
 
     function performSkipOp() {
@@ -752,26 +779,7 @@
             progressPercent = (video.currentTime / video.duration) * 100;
 
             trySaveWatchPosition();
-
-            const cTime = video.currentTime;
-
-            if (skipTimes.op && cTime >= skipTimes.op.start && cTime < skipTimes.op.end) {
-                if (playerSettings.autoSkipOpening && !isOpAutoSkipped) {
-                    isOpAutoSkipped = true;
-                    performSkipOp();
-                } else if (!playerSettings.autoSkipOpening) {
-                    activeSkipType = 'op';
-                }
-            } else if (skipTimes.ed && cTime >= skipTimes.ed.start && cTime < skipTimes.ed.end) {
-                if (playerSettings.autoSkipEnding && !isEdAutoSkipped) {
-                    isEdAutoSkipped = true;
-                    performSkipEd();
-                } else if (!playerSettings.autoSkipEnding) {
-                    activeSkipType = 'ed';
-                }
-            } else {
-                activeSkipType = null;
-            }
+            checkAndTriggerSkip(video.currentTime);
         };
 
         updateSkipTimes();
