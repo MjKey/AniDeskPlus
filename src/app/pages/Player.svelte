@@ -539,8 +539,10 @@
     });
 
     async function playVideo(episode) {
-        if (video && video.duration && args?.release?.id && (currentEpisode || args?.currentEpisode)) {
-            savePosition(args.release.id, currentEpisode || args.currentEpisode, video.currentTime, video.duration);
+        const relId = getReleaseId();
+        const prevEp = currentEpisode || args?.currentEpisode;
+        if (video && video.duration && relId && prevEp) {
+            savePosition(relId, prevEp, video.currentTime, video.duration);
         }
         hasRestoredPosition = false;
         resumeToastMessage = null;
@@ -985,6 +987,12 @@
         };
 
         video.onended = async () => {
+            const relId = getReleaseId();
+            const ep = currentEpisode || args?.currentEpisode;
+            if (relId && ep && video.duration) {
+                savePosition(relId, ep, video.duration, video.duration);
+            }
+
             if (sleepTimerType === 'episodes') {
                 sleepEpisodesRemaining--;
                 if (sleepEpisodesRemaining <= 0) {
@@ -1008,8 +1016,13 @@
         };
 
         video.ontimeupdate = () => {
+            if (!video || !video.duration) return;
             currentTime = utils.returnFormatedTime(video.currentTime);
             progressPercent = (video.currentTime / video.duration) * 100;
+
+            tryRestoreWatchPosition();
+            trySaveWatchPosition();
+            checkAndTriggerSkip(video.currentTime);
         };
 
         let source =
