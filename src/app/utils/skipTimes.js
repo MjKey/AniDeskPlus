@@ -197,7 +197,7 @@ function getEpisodeNumber(episode) {
  * @param {string} currentSourceName Source name
  */
 export async function getSkipTimes(release, episode, currentSourceName) {
-    if (!release) return { op: null, ed: null };
+    if (!release) return { op: null, ed: null, fromKodik: false, kodikMissing: false };
 
     const epNum = getEpisodeNumber(episode);
     const cacheKey = `${release.id || 'rel'}_ep${epNum}_src${currentSourceName || ''}_id${episode?.id || ''}`;
@@ -206,13 +206,18 @@ export async function getSkipTimes(release, episode, currentSourceName) {
         return cache.get(cacheKey);
     }
 
+    let kodikChecked = false;
+    let kodikFound = false;
+
     if (currentSourceName === "Kodik" && episode?.url) {
+        kodikChecked = true;
         console.log(`[SkipTimes] Querying Kodik HTML for skip times...`);
         const kodikTimes = await getKodikSkipTimes(episode.url);
         if (kodikTimes && (kodikTimes.op || kodikTimes.ed)) {
             console.log(`[SkipTimes] Got exact skip times from Kodik HTML:`, kodikTimes);
-            cache.set(cacheKey, kodikTimes);
-            return kodikTimes;
+            const finalResult = { ...kodikTimes, fromKodik: true, kodikMissing: false };
+            cache.set(cacheKey, finalResult);
+            return finalResult;
         }
     }
 
@@ -229,7 +234,12 @@ export async function getSkipTimes(release, episode, currentSourceName) {
         console.warn(`[SkipTimes] Could not resolve MAL ID for: "${release.title_ru || release.title_original}"`);
     }
 
-    const finalResult = result || { op: null, ed: null };
+    const finalResult = {
+        op: result?.op || null,
+        ed: result?.ed || null,
+        fromKodik: false,
+        kodikMissing: kodikChecked
+    };
     cache.set(cacheKey, finalResult);
     return finalResult;
 }

@@ -213,6 +213,16 @@
         const currentSourceName = args.episodes?.[0]?.source?.name ?? null;
 
         skipTimes = await getSkipTimes(args.release, ep, currentSourceName);
+
+        const isAutoSkipEnabled = Boolean(playerSettings?.autoSkipOpening || playerSettings?.autoSkipEnding);
+        if (currentSourceName === "Kodik" && skipTimes?.kodikMissing && isAutoSkipEnabled) {
+            if (skipTimes.op || skipTimes.ed) {
+                showSkipToast("В Kodik нет таймкодов (взяты из AniSkip)");
+            } else {
+                showSkipToast("В Kodik нет таймкодов автопропуска");
+            }
+        }
+
         if (video && video.currentTime != null) {
             checkAndTriggerSkip(video.currentTime);
         }
