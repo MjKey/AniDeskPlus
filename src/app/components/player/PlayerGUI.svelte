@@ -26,6 +26,7 @@
     export let changeSleepTimer;
     export let sleepTimerLabel = "Выкл";
     export let activeSkipType = null;
+    export let skipTimes = { op: null, ed: null };
     export let hasSkipTimes = false;
     export let skipToastMessage = null;
     export let resumeToastMessage = null;
@@ -407,12 +408,6 @@
                         <span id="current-time">{currentTime ?? "00:00"}</span>
                         <span class="delimiter">/</span>
                         <span id="duration-time">{durationTime ?? "00:00"}</span>
-                        {#if hasSkipTimes}
-                            <div class="skip-indicator flex-row" title="Таймкоды автопропуска найдены">
-                                <span class="indicator-dot"></span>
-                                <span>OP/ED</span>
-                            </div>
-                        {/if}
                     </div>
                 </div>
             </div>
@@ -507,6 +502,12 @@
                     class="timeline"
                     style="--progress-position: {progressPercent}%; --loaded-position: {loadedPercent}%"
                 >
+                    {#if skipTimes?.op && video?.duration}
+                        <div class="skip-segment op" style="left: {(skipTimes.op.start / video.duration) * 100}%; width: {((skipTimes.op.end - skipTimes.op.start) / video.duration) * 100}%"></div>
+                    {/if}
+                    {#if skipTimes?.ed && video?.duration}
+                        <div class="skip-segment ed" style="left: {(skipTimes.ed.start / video.duration) * 100}%; width: {((skipTimes.ed.end - skipTimes.ed.start) / video.duration) * 100}%"></div>
+                    {/if}
                     <div
                         class="timeline-dot"
                         style={isScrubbing ? "--scale: 1.6" : ""}
@@ -636,26 +637,13 @@
 </div>
 
 <style>
-    .skip-indicator {
-        align-items: center;
-        gap: 6px;
-        background: rgba(46, 204, 113, 0.15);
-        color: #2ecc71;
-        border: 1px solid rgba(46, 204, 113, 0.4);
-        padding: 3px 10px;
-        border-radius: 8px;
-        font-size: 12px;
-        font-weight: 600;
-        margin-left: 12px;
-        user-select: none;
-    }
-
-    .indicator-dot {
-        width: 7px;
-        height: 7px;
-        background-color: #2ecc71;
-        border-radius: 50%;
-        box-shadow: 0 0 8px #2ecc71;
+    .skip-segment {
+        position: absolute;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.4);
+        z-index: 1;
+        pointer-events: none;
+        border-radius: 2px;
     }
 
     .skip-toast {

@@ -1125,6 +1125,7 @@
         ).label}
         bind:volumePercent={volPercent}
         {activeSkipType}
+        {skipTimes}
         hasSkipTimes={!!(skipTimes?.op || skipTimes?.ed)}
         {skipToastMessage}
         {resumeToastMessage}

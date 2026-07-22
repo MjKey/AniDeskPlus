@@ -113,6 +113,71 @@ async function fetchAniSkip(malId, episodeNum) {
     }
 }
 
+function parseKodikSkipString(skipString) {
+    const result = { op: null, ed: null };
+    if (!skipString) return result;
+    
+    const parts = skipString.split(',');
+    
+    function parseTime(timeStr) {
+        const p = timeStr.trim().split(':');
+        if (p.length === 2) {
+            return parseInt(p[0]) * 60 + parseInt(p[1]);
+        }
+        if (p.length === 3) {
+            return parseInt(p[0]) * 3600 + parseInt(p[1]) * 60 + parseInt(p[2]);
+        }
+        return 0;
+    }
+    
+    if (parts.length >= 1) {
+        const opParts = parts[0].split('-');
+        if (opParts.length === 2) {
+            result.op = {
+                start: parseTime(opParts[0]),
+                end: parseTime(opParts[1])
+            };
+        }
+    }
+    if (parts.length >= 2) {
+        const edParts = parts[1].split('-');
+        if (edParts.length === 2) {
+            result.ed = {
+                start: parseTime(edParts[0]),
+                end: parseTime(edParts[1])
+            };
+        }
+    }
+    
+    return result;
+}
+
+async function getKodikSkipTimes(episodeUrl) {
+    if (!episodeUrl) return null;
+    try {
+        const url = URL.canParse(episodeUrl) ? episodeUrl : `https:${episodeUrl}`;
+        const res = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+        });
+        
+        if (!res.ok) return null;
+        
+        const html = await res.text();
+        const regex = /playerSettings\.skipButton\s*=\s*parseSkipButton\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\)/;
+        const match = html.match(regex);
+        
+        if (match) {
+            const skipString = match[1];
+            return parseKodikSkipString(skipString); 
+        }
+    } catch (e) {
+        console.warn("[SkipTimes] Kodik skip parse error:", e);
+    }
+    return null;
+}
+
 function getEpisodeNumber(episode) {
     if (!episode) return 1;
     if (typeof episode.position === 'number' && episode.position > 0) {
@@ -139,6 +204,16 @@ export async function getSkipTimes(release, episode, currentSourceName) {
 
     if (cache.has(cacheKey)) {
         return cache.get(cacheKey);
+    }
+
+    if (currentSourceName === "Kodik" && episode?.url) {
+        console.log(`[SkipTimes] Querying Kodik HTML for skip times...`);
+        const kodikTimes = await getKodikSkipTimes(episode.url);
+        if (kodikTimes && (kodikTimes.op || kodikTimes.ed)) {
+            console.log(`[SkipTimes] Got exact skip times from Kodik HTML:`, kodikTimes);
+            cache.set(cacheKey, kodikTimes);
+            return kodikTimes;
+        }
     }
 
     let result = null;
