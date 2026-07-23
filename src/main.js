@@ -286,6 +286,9 @@ function sendDebugLog(type, message, data = null) {
 }
 
 app.on('ready', () => {
+  if (process.platform === 'win32') {
+    app.setAppUserModelId('com.mjkey.anideskplus');
+  }
   createTray();
   createWindow();
 });
