@@ -130,13 +130,29 @@ if (SettingsFirst.EnableRPC) {
   discordRpcClient.login().catch(console.error);
 }
 
+let debugWindow = null;
+
 function isDev() {
-  return !app.isPackaged || isDebugMode;
+  return !app.isPackaged;
+}
+
+function getAppIconPath() {
+  const candidates = [
+    path.join(__dirname, 'icon', 'icon.ico'),
+    path.join(__dirname, 'public', 'assets', 'icons', 'anidesk-icon.png'),
+    path.join(process.resourcesPath || '', 'icon', 'icon.ico'),
+    path.join(app.getAppPath(), 'icon', 'icon.ico'),
+    path.join(app.getAppPath(), 'public', 'assets', 'icons', 'anidesk-icon.png')
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return path.join(__dirname, 'public', 'assets', 'icons', 'anidesk-icon.png');
 }
 
 function createTray() {
   if (tray) return;
-  const iconPath = path.join(__dirname, 'public', 'assets', 'icons', 'anidesk-icon.png');
+  const iconPath = getAppIconPath();
   const trayIcon = fs.existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : nativeImage.createEmpty();
   tray = new Tray(trayIcon);
   tray.setToolTip('AniDeskPlus');
@@ -172,6 +188,47 @@ function createTray() {
   });
 }
 
+function createDebugWindow() {
+  if (debugWindow && !debugWindow.isDestroyed()) {
+    debugWindow.focus();
+    return;
+  }
+  debugWindow = new BrowserWindow({
+    width: 850,
+    height: 600,
+    title: 'AniDeskPlus — Live Debug Console',
+    icon: getAppIconPath(),
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      sandbox: false
+    }
+  });
+
+  const debugHtmlPath = path.join(__dirname, 'public', 'debug.html');
+  debugWindow.loadFile(debugHtmlPath);
+
+  debugWindow.on('closed', () => {
+    debugWindow = null;
+  });
+}
+
+function sendDebugLog(type, message, data = null) {
+  const payload = {
+    timestamp: new Date().toLocaleTimeString(),
+    type,
+    message: typeof message === 'object' ? JSON.stringify(message) : String(message),
+    data
+  };
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('debug:log', payload);
+  }
+  if (debugWindow && !debugWindow.isDestroyed()) {
+    debugWindow.webContents.send('debug:log', payload);
+  }
+}
+
 function UpsertKeyValue(obj, keyToChange, value) {
   const keyToChangeLower = keyToChange.toLowerCase();
   for (const key of Object.keys(obj)) {
@@ -198,11 +255,11 @@ function createWindow() {
       sandbox: true,
       devTools: SettingsFirst.EnableDevTools || isDebugMode
     },
-    icon: "./public/assets/icons/anidesk-icon.png",
+    icon: getAppIconPath(),
     show: false,
   });
 
-  if (isDebugMode || SettingsFirst.EnableDevTools) {
+  if (SettingsFirst.EnableDevTools) {
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   }
 
@@ -234,17 +291,6 @@ function createWindow() {
   mainWindow.once('ready-to-show', async () => {
     mainWindow.show();
   });
-
-function sendDebugLog(type, message, data = null) {
-  if (isDebugMode && mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('debug:log', {
-      timestamp: new Date().toLocaleTimeString(),
-      type,
-      message: typeof message === 'object' ? JSON.stringify(message) : String(message),
-      data
-    });
-  }
-}
 
   mainWindow.webContents.session.webRequest.onBeforeSendHeaders(
     (details, callback) => {
@@ -291,6 +337,9 @@ app.on('ready', () => {
   }
   createTray();
   createWindow();
+  if (isDebugMode) {
+    createDebugWindow();
+  }
 });
 
 app.on('window-all-closed', function () {

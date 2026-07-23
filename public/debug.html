@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>AniDeskPlus — Live Debug Console</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #121316;
+      color: #e1e2e6;
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .header {
+      background-color: #1a1b20;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .title {
+      font-weight: bold;
+      color: #f1c40f;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .badge {
+      background-color: #e74c3c;
+      color: white;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    .toolbar {
+      background-color: #16171d;
+      padding: 8px 14px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .tab-btn {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #a0a5b5;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .tab-btn.active {
+      background-color: #3498db;
+      color: white;
+      border-color: #3498db;
+    }
+    .clear-btn {
+      margin-left: auto;
+      background-color: rgba(231, 76, 60, 0.2);
+      color: #e74c3c;
+      border: 1px solid rgba(231, 76, 60, 0.4);
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .clear-btn:hover {
+      background-color: rgba(231, 76, 60, 0.4);
+    }
+    .console-body {
+      flex: 1;
+      padding: 10px 14px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .log-line {
+      display: flex;
+      gap: 10px;
+      line-height: 1.4;
+      word-break: break-all;
+      padding: 2px 0;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.03);
+    }
+    .time { color: #7f8c8d; font-size: 11px; white-space: nowrap; }
+    .type { font-weight: bold; width: 60px; text-transform: uppercase; font-size: 11px; white-space: nowrap; }
+    .msg { flex: 1; }
+    
+    .type-net { color: #3498db; }
+    .type-log { color: #2ecc71; }
+    .type-warn { color: #f39c12; }
+    .type-error { color: #e74c3c; }
+
+    .footer {
+      background-color: #1a1b20;
+      padding: 6px 14px;
+      font-size: 11px;
+      color: #7f8c8d;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">
+      🐛 AniDeskPlus Live Debug Console
+      <span class="badge">--debug mode</span>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button class="tab-btn active" onclick="setFilter('all')">Все</button>
+    <button class="tab-btn" onclick="setFilter('net')">Сеть (Network)</button>
+    <button class="tab-btn" onclick="setFilter('log')">Логи (Log)</button>
+    <button class="tab-btn" onclick="setFilter('error')">Ошибки (Error)</button>
+    <button class="clear-btn" onclick="clearLogs()">Очистить</button>
+  </div>
+
+  <div class="console-body" id="consoleBody">
+    <div class="log-line">
+      <span class="time">[System]</span>
+      <span class="type type-log">LOG</span>
+      <span class="msg">Live Debug Console инициализирована. Ожидание событий...</span>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span id="statText">Логов: 1</span>
+    <span>AniDeskPlus Live Log Window</span>
+  </div>
+
+  <script>
+    let activeFilter = 'all';
+    let logs = [];
+
+    function setFilter(filter) {
+      activeFilter = filter;
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      renderLogs();
+    }
+
+    function clearLogs() {
+      logs = [];
+      renderLogs();
+    }
+
+    function renderLogs() {
+      const container = document.getElementById('consoleBody');
+      container.innerHTML = '';
+      const filtered = logs.filter(l => activeFilter === 'all' || l.type === activeFilter);
+      
+      filtered.forEach(l => {
+        const div = document.createElement('div');
+        div.className = 'log-line';
+        div.innerHTML = `
+          <span class="time">${l.timestamp}</span>
+          <span class="type type-${l.type}">${l.type}</span>
+          <span class="msg">${escapeHtml(l.message)} ${l.data ? JSON.stringify(l.data) : ''}</span>
+        `;
+        container.appendChild(div);
+      });
+      container.scrollTop = container.scrollHeight;
+      document.getElementById('statText').innerText = `Показано: ${filtered.length} / Всего: ${logs.length}`;
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    if (window.debugApi && window.debugApi.onLog) {
+      window.debugApi.onLog((log) => {
+        logs.push(log);
+        if (logs.length > 1000) logs.shift();
+        renderLogs();
+      });
+    }
+  </script>
+</body>
+</html>
