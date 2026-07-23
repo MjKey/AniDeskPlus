@@ -389,6 +389,20 @@
         />
     </div>
     <div class="gui-bottom-bar flex-column">
+        {#if activeSkipType}
+            <div class="skip-interval-row container flex-row">
+                <button
+                    class="skip-interval-button flex-row"
+                    onclick={() => {
+                        if (activeSkipType === 'op' && performSkipOp) performSkipOp();
+                        if (activeSkipType === 'ed' && performSkipEd) performSkipEd();
+                    }}
+                >
+                    <img src="./assets/icons/skipOp.svg" alt="skip" width="20px" height="20px" />
+                    <span>Пропустить {activeSkipType === 'op' ? 'опенинг' : 'эндинг'}</span>
+                </button>
+            </div>
+        {/if}
         <div class="top-content container flex-row">
             <div class="left-content">
                 <div class="time-container">
@@ -610,18 +624,7 @@
         </div>
     {/if}
 
-    {#if activeSkipType}
-        <button
-            class="skip-interval-button flex-row"
-            onclick={() => {
-                if (activeSkipType === 'op' && performSkipOp) performSkipOp();
-                if (activeSkipType === 'ed' && performSkipEd) performSkipEd();
-            }}
-        >
-            <img src="./assets/icons/skipOp.svg" alt="skip" width="20px" height="20px" />
-            <span>Пропустить {activeSkipType === 'op' ? 'опенинг' : 'эндинг'}</span>
-        </button>
-    {/if}
+
 </div>
 
 <style>
@@ -683,27 +686,29 @@
         filter: brightness(1.2);
     }
 
+    .skip-interval-row {
+        display: flex;
+        justify-content: flex-end;
+        padding: 4px 16px 2px;
+    }
+
     .skip-interval-button {
-        position: absolute;
-        bottom: 120px;
-        right: 40px;
         background: var(--select-button-left-color);
         color: var(--main-text-color);
-        padding: 12px 22px;
-        border-radius: 12px;
-        font-size: 15px;
+        padding: 8px 18px;
+        border-radius: 10px;
+        font-size: 14px;
         font-weight: bold;
         cursor: pointer;
-        z-index: 10;
         display: flex;
         align-items: center;
         gap: 8px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
         transition: transform 0.15s ease, background 0.15s ease;
     }
 
     .skip-interval-button:hover {
-        transform: scale(1.05);
+        transform: scale(1.04);
         background: var(--player-middle-button-select);
     }
     .player-gui {
