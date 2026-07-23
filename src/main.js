@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, net, autoUpdater, dialog, Tray, Menu, Notification, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, net, autoUpdater, dialog, Tray, Menu, Notification, nativeImage, shell } = require('electron');
 if (require('electron-squirrel-startup')) {
   app.quit();
   process.exit(0);
@@ -386,7 +386,7 @@ ipcMain.handle("sibnet:parse", async (_, link) => {
 });
 
 ipcMain.handle("winApi:openLink", (_, link) => {
-  o.open(link);
+  if (link) shell.openExternal(link);
 });
 
 ipcMain.handle("discordRPC:setActivity", (_, activity) => {

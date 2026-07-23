@@ -151,13 +151,6 @@
         onChangeCallback={(e) => updateMainKey("EnableEpisodeNotifications", e)}
     />
 
-    <TextboxElement
-        title="Предпочитаемая озвучка (фильтр для уведомлений)"
-        placeholder="Например: AniLibria, Studio Band, Flarrow Films (или пусто для всех)"
-        value={baseSettings?.PreferredDubber ?? ""}
-        onChangeCallback={(e) => updateMainKey("PreferredDubber", e.target.value)}
-    />
-
     <CheckboxElement
         title="Включить автообновление"
         description="Приложение будет автоматически проверять и устанавливать обновления при их наличии."
@@ -241,13 +234,6 @@
             type={shikiCheckStatus.type === 'error' ? 'warning' : 'info'}
         />
     {/if}
-
-    <TextboxElement
-        title="Прямой Токен доступа (Access Token)"
-        placeholder="Или вставьте готовый токен напрямую"
-        value={shikiToken}
-        onChangeCallback={(e) => checkAndSaveShikimoriToken(e.target.value)}
-    />
 
     <CheckboxElement
         title="Авто-синхронизация при просмотре"

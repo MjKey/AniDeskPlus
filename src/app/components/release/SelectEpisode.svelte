@@ -1,6 +1,6 @@
 <script>
     import Preloader from "../gui/Preloader.svelte";
-    import { createEventDispatcher } from "svelte";
+    import { createEventDispatcher, onMount } from "svelte";
     import { AniLibriaParser, KodikParser } from "anixartjs";
     import { localStorageWritable } from "@babichjacob/svelte-localstorage";
     import DropdownButton from "../buttons/DropdownButton.svelte";
@@ -17,6 +17,32 @@
         currentSourceName,
         playingSettings,
         episodes;
+
+    let preferredDubber = "";
+
+    onMount(async () => {
+        if (window.settings?.get) {
+            preferredDubber = (await window.settings.get("PreferredDubber")) || "";
+        }
+    });
+
+    $: isPreferredDubber = Boolean(
+        preferredDubber &&
+        currentDubberName &&
+        preferredDubber.toLowerCase().trim() === currentDubberName.toLowerCase().trim()
+    );
+
+    async function togglePreferredDubber() {
+        if (!currentDubberName) return;
+        if (isPreferredDubber) {
+            preferredDubber = "";
+        } else {
+            preferredDubber = currentDubberName;
+        }
+        if (window.settings?.set) {
+            await window.settings.set("PreferredDubber", preferredDubber);
+        }
+    }
 
     $: watchMap = getReleasePositions(args?.id);
 
@@ -166,17 +192,44 @@
 <div class="modal-title">
     <span class="title">Выбор эпизода</span>
     <div class="modal-buttons flex-row">
-        <DropdownButton
-            placeholder="Озвучка"
-            bind:values={dubberList}
-            value={currentDubberId}
-            onChange={(e, v) => {
-                selectDubber(v);
-            }}
-            height={35}
-            width={280}
-            outsideElement={backgroundModal}
-        />
+        <div class="dubber-select-container flex-row">
+            <DropdownButton
+                placeholder="Озвучка"
+                bind:values={dubberList}
+                value={currentDubberId}
+                onChange={(e, v) => {
+                    selectDubber(v);
+                }}
+                height={35}
+                width={250}
+                outsideElement={backgroundModal}
+            />
+            {#if currentDubberName}
+                <button
+                    class="dubber-bell-btn flex-row"
+                    class:active={isPreferredDubber}
+                    onclick={togglePreferredDubber}
+                    title={isPreferredDubber
+                        ? `Уведомления отправляются для озвучки "${currentDubberName}"`
+                        : `Получать уведомления для озвучки "${currentDubberName}"`}
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="17"
+                        height="17"
+                        viewBox="0 0 24 24"
+                        fill={isPreferredDubber ? "#f1c40f" : "none"}
+                        stroke={isPreferredDubber ? "#f1c40f" : "currentColor"}
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                </button>
+            {/if}
+        </div>
         <DropdownButton
             placeholder="Источник"
             values={sourceList.sources.map((x) => ({
@@ -190,7 +243,7 @@
                 episodes = getEpisodes();
             }}
             height={35}
-            width={150}
+            width={140}
             outsideElement={backgroundModal}
         />
     </div>
@@ -305,6 +358,36 @@
         width: fit-content;
         margin-right: 25px;
         gap: 10px;
+        align-items: center;
+    }
+
+    .dubber-select-container {
+        align-items: center;
+        gap: 6px;
+    }
+
+    .dubber-bell-btn {
+        background-color: var(--alt-gray-background-color);
+        color: var(--secondary-text-color);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        width: 35px;
+        height: 35px;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .dubber-bell-btn:hover {
+        background-color: var(--select-button-color);
+        color: var(--main-text-color);
+    }
+
+    .dubber-bell-btn.active {
+        background-color: rgba(241, 196, 15, 0.15);
+        border-color: rgba(241, 196, 15, 0.5);
+        color: #f1c40f;
     }
 
     .modal-title {
