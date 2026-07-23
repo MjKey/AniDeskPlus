@@ -10,7 +10,10 @@
     import {
         getShikimoriWhoAmI,
         getShikimoriAuthUrl,
-        exchangeShikimoriCode
+        exchangeShikimoriCode,
+        ShikimoriDomains,
+        getShikimoriDomain,
+        setShikimoriDomain
     } from "../utils/shikimori";
 
     let guiSettings, endpointUrl;
@@ -20,6 +23,7 @@
     let shikiCheckStatus = null;
     let isCheckingShiki = false;
     let shikiAuthCodeInput = "";
+    let currentShikiDomain = getShikimoriDomain();
 
     let restartRequired = baseSettings?.restartRequired || false;
 
@@ -187,6 +191,17 @@
     <Separator width="75%" />
 
     <TitleElement title="Интеграция с Shikimori 🌸" />
+
+    <DropdownElement
+        title="Домен Shikimori"
+        values={ShikimoriDomains}
+        value={currentShikiDomain}
+        placeholder="Выберите домен"
+        onChangeCallback={(e, v) => {
+            currentShikiDomain = v;
+            setShikimoriDomain(v);
+        }}
+    />
 
     {#if shikiUser}
         <InfoElement

@@ -3,23 +3,48 @@
  * Uses official Shikimori GraphQL API & OAuth2 REST API
  */
 
-const SHIKI_BASE_URL = "https://shikimori.me/api";
-const SHIKI_GRAPHQL_URL = "https://shikimori.me/api/graphql";
-const SHIKI_OAUTH_TOKEN_URL = "https://shikimori.me/oauth/token";
 const USER_AGENT = "AniDeskPlusApp/1.0 (Desktop; Windows)";
 
 export const SHIKI_CLIENT_ID = __ENV_SHIKIMORI_CLIENT_ID__;
 export const SHIKI_CLIENT_SECRET = __ENV_SHIKIMORI_CLIENT_SECRET__;
 export const SHIKI_REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob";
 
+export const ShikimoriDomains = [
+    { value: "shikimori.io", label: "shikimori.io (По умолчанию)" },
+    { value: "shikimori.me", label: "shikimori.me" },
+    { value: "shikimori.one", label: "shikimori.one" }
+];
+
+export function getShikimoriDomain() {
+    return localStorage.getItem("shikimori_domain") || "shikimori.io";
+}
+
+export function setShikimoriDomain(domain) {
+    if (domain) {
+        localStorage.setItem("shikimori_domain", domain);
+    }
+}
+
+function getShikimoriBaseUrl() {
+    return `https://${getShikimoriDomain()}/api`;
+}
+
+function getShikimoriGraphQlUrl() {
+    return `https://${getShikimoriDomain()}/api/graphql`;
+}
+
+function getShikimoriOAuthTokenUrl() {
+    return `https://${getShikimoriDomain()}/oauth/token`;
+}
+
 export function getShikimoriAuthUrl() {
-    return `https://shikimori.me/oauth/authorize?client_id=${SHIKI_CLIENT_ID}&redirect_uri=${encodeURIComponent(SHIKI_REDIRECT_URI)}&response_type=code&scope=user_rates`;
+    return `https://${getShikimoriDomain()}/oauth/authorize?client_id=${SHIKI_CLIENT_ID}&redirect_uri=${encodeURIComponent(SHIKI_REDIRECT_URI)}&response_type=code&scope=user_rates`;
 }
 
 export async function exchangeShikimoriCode(authCode) {
     if (!authCode) return null;
     try {
-        const res = await fetch(SHIKI_OAUTH_TOKEN_URL, {
+        const res = await fetch(getShikimoriOAuthTokenUrl(), {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -81,7 +106,7 @@ export async function searchShikimoriAnimeGraphQL(titleOriginal, titleRu, token 
     const queryStr = titleOriginal || titleRu;
     if (!queryStr) return null;
 
-    const cacheKey = `gql_search_${queryStr}_${Boolean(token)}`;
+    const cacheKey = `gql_search_${queryStr}_${Boolean(token)}_${getShikimoriDomain()}`;
     const cached = getCache(cacheKey);
     if (cached !== null) return cached;
 
@@ -114,7 +139,7 @@ export async function searchShikimoriAnimeGraphQL(titleOriginal, titleRu, token 
             headers["Authorization"] = `Bearer ${token}`;
         }
 
-        const res = await fetch(SHIKI_GRAPHQL_URL, {
+        const res = await fetch(getShikimoriGraphQlUrl(), {
             method: "POST",
             headers,
             body: JSON.stringify({
@@ -139,7 +164,7 @@ export async function searchShikimoriAnimeGraphQL(titleOriginal, titleRu, token 
 export async function getShikimoriWhoAmI(token) {
     if (!token) return null;
     try {
-        const res = await fetch(`${SHIKI_BASE_URL}/users/whoami`, {
+        const res = await fetch(`${getShikimoriBaseUrl()}/users/whoami`, {
             headers: {
                 "User-Agent": USER_AGENT,
                 "Authorization": `Bearer ${token}`
@@ -156,7 +181,7 @@ export async function getShikimoriWhoAmI(token) {
 export async function getShikimoriUserRate(shikiAnimeId, token, userId) {
     if (!token || !userId || !shikiAnimeId) return null;
     try {
-        const url = `${SHIKI_BASE_URL}/v2/user_rates?user_id=${userId}&target_id=${shikiAnimeId}&target_type=Anime`;
+        const url = `${getShikimoriBaseUrl()}/v2/user_rates?user_id=${userId}&target_id=${shikiAnimeId}&target_type=Anime`;
         const res = await fetch(url, {
             headers: {
                 "User-Agent": USER_AGENT,
@@ -180,8 +205,8 @@ export async function saveShikimoriUserRate(shikiAnimeId, token, userId, status,
     try {
         const isUpdate = Boolean(existingRateId);
         const url = isUpdate 
-            ? `${SHIKI_BASE_URL}/v2/user_rates/${existingRateId}`
-            : `${SHIKI_BASE_URL}/v2/user_rates`;
+            ? `${getShikimoriBaseUrl()}/v2/user_rates/${existingRateId}`
+            : `${getShikimoriBaseUrl()}/v2/user_rates`;
 
         const method = isUpdate ? "PATCH" : "POST";
         const body = JSON.stringify({
