@@ -3,9 +3,9 @@
  * Uses official Shikimori GraphQL API & OAuth2 REST API
  */
 
-const SHIKI_BASE_URL = "https://shikimori.one/api";
-const SHIKI_GRAPHQL_URL = "https://shikimori.one/api/graphql";
-const SHIKI_OAUTH_TOKEN_URL = "https://shikimori.one/oauth/token";
+const SHIKI_BASE_URL = "https://shikimori.me/api";
+const SHIKI_GRAPHQL_URL = "https://shikimori.me/api/graphql";
+const SHIKI_OAUTH_TOKEN_URL = "https://shikimori.me/oauth/token";
 const USER_AGENT = "AniDeskPlusApp/1.0 (Desktop; Windows)";
 
 export const SHIKI_CLIENT_ID = __ENV_SHIKIMORI_CLIENT_ID__;
@@ -13,7 +13,7 @@ export const SHIKI_CLIENT_SECRET = __ENV_SHIKIMORI_CLIENT_SECRET__;
 export const SHIKI_REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob";
 
 export function getShikimoriAuthUrl() {
-    return `https://shikimori.one/oauth/authorize?client_id=${SHIKI_CLIENT_ID}&redirect_uri=${encodeURIComponent(SHIKI_REDIRECT_URI)}&response_type=code&scope=user_rates`;
+    return `https://shikimori.me/oauth/authorize?client_id=${SHIKI_CLIENT_ID}&redirect_uri=${encodeURIComponent(SHIKI_REDIRECT_URI)}&response_type=code&scope=user_rates`;
 }
 
 export async function exchangeShikimoriCode(authCode) {

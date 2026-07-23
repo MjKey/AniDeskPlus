@@ -23,6 +23,12 @@
             const userStr = localStorage.getItem("shikimori_user");
             if (userStr) shikiUser = JSON.parse(userStr);
 
+            // Do not send any network requests to Shikimori if no token is connected
+            if (!shikiToken) {
+                isLoading = false;
+                return;
+            }
+
             if (release) {
                 shikiAnime = await searchShikimoriAnimeGraphQL(release.title_original, release.title_ru, shikiToken);
                 if (shikiAnime) {
