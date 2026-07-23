@@ -124,7 +124,11 @@
         const enableNotifs = baseSettings?.EnableEpisodeNotifications ?? true;
         if (!enableNotifs) return;
 
-        const preferredDubber = (baseSettings?.PreferredDubber || "").trim().toLowerCase();
+        const globalPreferredDubber = (baseSettings?.PreferredDubber || "").trim().toLowerCase();
+        let preferredDubbersMap = {};
+        try {
+            preferredDubbersMap = JSON.parse(localStorage.getItem("preferred_dubbers") || "{}");
+        } catch (e) {}
 
         try {
             const res = await window.anixApi.bookmark.getBookmarks(0, 0);
@@ -147,12 +151,15 @@
 
                 if (prevEp !== undefined && currentEp > prevEp) {
                     let allowNotif = true;
-                    if (preferredDubber) {
+                    const releaseSpecificDubber = (preferredDubbersMap[releaseId] || "").trim().toLowerCase();
+                    const targetDubber = releaseSpecificDubber || globalPreferredDubber;
+
+                    if (targetDubber) {
                         try {
                             const releaseDetails = await window.anixApi.release.get(releaseId);
-                            const dubbers = releaseDetails?.release?.dubbers || releaseDetails?.dubbers || [];
+                            const dubbers = releaseDetails?.release?.types || releaseDetails?.types || releaseDetails?.release?.dubbers || releaseDetails?.dubbers || [];
                             const matchesDubber = dubbers.some(d =>
-                                (d.name || d.title || "").toLowerCase().includes(preferredDubber)
+                                (d.name || d.title || "").toLowerCase().includes(targetDubber)
                             );
                             if (!matchesDubber) {
                                 allowNotif = false;

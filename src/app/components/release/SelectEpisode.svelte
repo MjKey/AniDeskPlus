@@ -18,30 +18,39 @@
         playingSettings,
         episodes;
 
-    let preferredDubber = "";
+    let preferredDubbersMap = {};
 
-    onMount(async () => {
-        if (window.settings?.get) {
-            preferredDubber = (await window.settings.get("PreferredDubber")) || "";
+    onMount(() => {
+        try {
+            preferredDubbersMap = JSON.parse(localStorage.getItem("preferred_dubbers") || "{}");
+        } catch (e) {
+            preferredDubbersMap = {};
         }
     });
 
+    $: releaseDubber = (args?.id && preferredDubbersMap[args.id]) || "";
     $: isPreferredDubber = Boolean(
-        preferredDubber &&
+        releaseDubber &&
         currentDubberName &&
-        preferredDubber.toLowerCase().trim() === currentDubberName.toLowerCase().trim()
+        releaseDubber.toLowerCase().trim() === currentDubberName.toLowerCase().trim()
     );
 
-    async function togglePreferredDubber() {
-        if (!currentDubberName) return;
+    function togglePreferredDubber() {
+        if (!currentDubberName || !args?.id) return;
+        try {
+            preferredDubbersMap = JSON.parse(localStorage.getItem("preferred_dubbers") || "{}");
+        } catch (e) {
+            preferredDubbersMap = {};
+        }
+
         if (isPreferredDubber) {
-            preferredDubber = "";
+            delete preferredDubbersMap[args.id];
         } else {
-            preferredDubber = currentDubberName;
+            preferredDubbersMap[args.id] = currentDubberName;
         }
-        if (window.settings?.set) {
-            await window.settings.set("PreferredDubber", preferredDubber);
-        }
+
+        localStorage.setItem("preferred_dubbers", JSON.stringify(preferredDubbersMap));
+        preferredDubbersMap = { ...preferredDubbersMap };
     }
 
     $: watchMap = getReleasePositions(args?.id);
