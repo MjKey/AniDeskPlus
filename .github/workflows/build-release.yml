@@ -37,11 +37,11 @@ jobs:
           SHIKIMORI_CLIENT_ID: ${{ secrets.SHIKIMORI_CLIENT_ID }}
           SHIKIMORI_CLIENT_SECRET: ${{ secrets.SHIKIMORI_CLIENT_SECRET }}
 
-      - name: Create Draft Release
+      - name: Create Published Release
         uses: softprops/action-gh-release@v2
         if: success()
         with:
-          draft: true
+          draft: false
           prerelease: false
           name: AniDesk Plus ${{ github.ref_name }}
           files: |

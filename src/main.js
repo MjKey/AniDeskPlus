@@ -429,6 +429,19 @@ ipcMain.handle("notify:send", (_, { title, body, releaseId }) => {
   return true;
 });
 
+function compareVersions(v1, v2) {
+  if (!v1 || !v2) return 0;
+  const p1 = String(v1).replace(/^v/, '').split('.').map(n => parseInt(n, 10) || 0);
+  const p2 = String(v2).replace(/^v/, '').split('.').map(n => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(p1.length, p2.length); i++) {
+    const n1 = p1[i] || 0;
+    const n2 = p2[i] || 0;
+    if (n1 > n2) return 1;
+    if (n1 < n2) return -1;
+  }
+  return 0;
+}
+
 ipcMain.handle("updater:check", async (_) => {
   const currentVersion = app.getVersion();
   if (app.isPackaged && autoUpdater) {
@@ -445,12 +458,13 @@ ipcMain.handle("updater:check", async (_) => {
     });
     if (res.ok) {
       const data = await res.json();
-      const latestTag = (data.tag_name || "").replace(/^v/, "");
-      const isNewer = latestTag && latestTag !== currentVersion;
+      const latestTag = (data.tag_name || "").replace(/^v/, "").trim();
+      const cleanCurrent = (currentVersion || "").replace(/^v/, "").trim();
+      const isNewer = compareVersions(latestTag, cleanCurrent) > 0;
       return {
         status: isNewer ? "update_available" : "latest",
         latestVersion: latestTag,
-        currentVersion,
+        currentVersion: cleanCurrent,
         releaseUrl: data.html_url || "https://github.com/MjKey/AniDeskPlus/releases"
       };
     }
