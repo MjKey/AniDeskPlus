@@ -98,14 +98,15 @@ if (app.isPackaged && SettingsFirst.AutoUpdate) {
   });
 
   try {
-    autoUpdater.setFeedURL(feed);
+    autoUpdater.setFeedURL({ url: feed });
     setTimeout(() => {
       try {
+        if (isDebugMode) console.log("[DEBUG] Triggering autoUpdater.checkForUpdates()");
         autoUpdater.checkForUpdates();
       } catch (e) {
         console.error("AutoUpdater check error:", e);
       }
-    }, 10000);
+    }, 5000);
   } catch (e) {
     console.error("AutoUpdater setup error:", e);
   }
