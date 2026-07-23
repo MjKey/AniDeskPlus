@@ -694,7 +694,7 @@
             state: `${episode.name}`,
             details: args.release.title_ru.slice(0, 127),
             largeImageKey: "anidesk-transparent",
-            largeImageText: "AniDesk - Anixart Client",
+            largeImageText: "AniDeskPlus - Anixart Client",
             startTimestamp: startTimestamp - video.currentTime * 1000,
             endTimestamp:
                 startTimestamp + (video.duration - video.currentTime) * 1000,
@@ -704,7 +704,7 @@
                     label: "Ссылка на релиз",
                     url: `https://anixart.app/release/${args.release.id}`,
                 },
-                { label: "Ссылка на клиент", url: "https://anidesk.ds1nc.ru/" },
+                { label: "Ссылка на клиент", url: "https://github.com/MjKey/AniDeskPlus" },
             ],
         });
     }
@@ -983,7 +983,7 @@
                 state: `${currentEpisode.name}`,
                 details: args.release.title_ru.slice(0, 127),
                 largeImageKey: "anidesk-transparent",
-                largeImageText: "AniDesk - Anixart Client",
+                largeImageText: "AniDeskPlus - Anixart Client",
                 instance: true,
                 buttons: [
                     {
@@ -992,7 +992,7 @@
                     },
                     {
                         label: "Ссылка на клиент",
-                        url: "https://anidesk.ds1nc.ru/",
+                        url: "https://github.com/MjKey/AniDeskPlus",
                     },
                 ],
             });
@@ -1009,7 +1009,7 @@
                 state: `${currentEpisode.name}`,
                 details: args.release.title_ru.slice(0, 127),
                 largeImageKey: "anidesk-transparent",
-                largeImageText: "AniDesk - Anixart Client",
+                largeImageText: "AniDeskPlus - Anixart Client",
                 startTimestamp: startTimestamp - video.currentTime * 1000,
                 endTimestamp:
                     startTimestamp +
@@ -1022,7 +1022,7 @@
                     },
                     {
                         label: "Ссылка на клиент",
-                        url: "https://anidesk.ds1nc.ru/",
+                        url: "https://github.com/MjKey/AniDeskPlus",
                     },
                 ],
             });
@@ -1088,7 +1088,7 @@
             state: `${currentEpisode.name}`,
             details: args.release.title_ru.slice(0, 127),
             largeImageKey: "anidesk-transparent",
-            largeImageText: "AniDesk - Anixart Client",
+            largeImageText: "AniDeskPlus - Anixart Client",
             startTimestamp: startTimestamp - video.currentTime * 1000,
             endTimestamp:
                 startTimestamp + (video.duration - video.currentTime) * 1000,
@@ -1098,7 +1098,7 @@
                     label: "Ссылка на релиз",
                     url: `https://anixart.tv/release/${args.release.id}`,
                 },
-                { label: "Ссылка на клиент", url: "https://anidesk.ds1nc.ru/" },
+                { label: "Ссылка на клиент", url: "https://github.com/MjKey/AniDeskPlus" },
             ],
         });
     }

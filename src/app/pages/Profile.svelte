@@ -32,13 +32,13 @@
         discordRPC.setActivity({
             type: 3,
             state: `Смотрит профиль ${data.profileInfo.profile.login}`,
-            details: "AniDesk",
+            details: "AniDeskPlus",
             largeImageKey: `anidesk-transparent`,
-            largeImageText: 'AniDesk - Anixart Client',
+            largeImageText: 'AniDeskPlus - Anixart Client',
             instance: true,
             buttons: [
                 { label: "Ссылка на профиль", url: `https://anixart.tv/profile/${data.profileInfo.profile.id}` },
-                { label: "Ссылка на клиент", url: "https://anidesk.ds1nc.ru/" },
+                { label: "Ссылка на клиент", url: "https://github.com/MjKey/AniDeskPlus" },
             ],
         });
     });

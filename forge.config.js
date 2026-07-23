@@ -17,7 +17,7 @@ module.exports = {
       config: {
         name: 'AniDeskPlus',
         authors: 'AniDeskPlus',
-        iconUrl: "https://anidesk.ds1nc.ru/anidesk-icon.ico",
+        iconUrl: "https://raw.githubusercontent.com/MjKey/AniDeskPlus/main/public/assets/icons/anidesk-icon.png",
         setupExe: `AniDeskPlus-${package.version}-win32.exe`,
         setupIcon: 'icon/icon.ico',
         loadingGif: 'icon/install-anim.gif'
@@ -34,8 +34,8 @@ module.exports = {
           name: "anideskplus",
           productName: "AniDeskPlus",
           icon: "icon/icon.ico",
-          maintainer: 'DesConnet, hack1exe',
-          homepage: "https://anidesk.ds1nc.ru",
+          maintainer: 'MjKey',
+          homepage: "https://github.com/MjKey/AniDeskPlus",
         }
       },
     },
