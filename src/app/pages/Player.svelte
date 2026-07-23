@@ -35,6 +35,7 @@
     import utils from "../utils";
     import { getSkipTimes } from "../utils/skipTimes.js";
     import { savePosition, getSavedPosition, clearPosition } from "../utils/watchPosition.js";
+    import { searchShikimoriAnimeGraphQL, getShikimoriUserRate, saveShikimoriUserRate } from "../utils/shikimori.js";
 
     const upscaleModeMap = {
         0: DoG,
@@ -145,6 +146,32 @@
         }
     }
 
+    async function syncShikimoriWatchProgress(ep) {
+        if (baseSettings?.SyncShikimoriOnWatch === false) return;
+        const shikiToken = localStorage.getItem("shikimori_token");
+        const shikiUserStr = localStorage.getItem("shikimori_user");
+        if (!shikiToken || !shikiUserStr || !args?.release) return;
+
+        try {
+            const shikiUser = JSON.parse(shikiUserStr);
+            const epNum = ep?.position || 1;
+            const shikiAnime = await searchShikimoriAnimeGraphQL(args.release.title_original, args.release.title_ru, shikiToken);
+            if (!shikiAnime) return;
+
+            const userRate = await getShikimoriUserRate(shikiAnime.id, shikiToken, shikiUser.id);
+            const currentWatched = userRate?.episodes || 0;
+            if (epNum > currentWatched) {
+                const maxEp = shikiAnime.episodes || 0;
+                const isCompleted = maxEp > 0 && epNum >= maxEp;
+                const status = isCompleted ? "completed" : (userRate?.status || "watching");
+                await saveShikimoriUserRate(shikiAnime.id, shikiToken, shikiUser.id, status, epNum, userRate?.id);
+                console.log(`[Shikimori] Auto-synced episode ${epNum} for ${args.release.title_ru}`);
+            }
+        } catch (e) {
+            console.error("[Shikimori] Progress sync error:", e);
+        }
+    }
+
     function trySaveWatchPosition() {
         if (playerSettings?.rememberPosition === false || !video || !video.duration || isNaN(video.currentTime)) return;
         const now = Date.now();
@@ -153,8 +180,10 @@
             const relId = getReleaseId();
             const ep = currentEpisode || args?.currentEpisode;
             if (relId && ep) {
-                console.log(`[WatchPosition] Saving position: relId=${relId}, ep=${ep.position || ep.name}, time=${video.currentTime.toFixed(1)}s / ${video.duration.toFixed(1)}s`);
                 savePosition(relId, ep, video.currentTime, video.duration);
+                if (video.currentTime / video.duration >= 0.75) {
+                    syncShikimoriWatchProgress(ep);
+                }
             }
         }
     }
@@ -164,6 +193,9 @@
         const ep = currentEpisode || args?.currentEpisode;
         if (video && video.duration && relId && ep) {
             savePosition(relId, ep, video.currentTime, video.duration);
+            if (video.currentTime / video.duration >= 0.75) {
+                syncShikimoriWatchProgress(ep);
+            }
         }
     });
 

@@ -6,6 +6,7 @@
     let versionInfo = null;
     let updateStatus = null;
     let isChecking = false;
+    let showOriginalDevs = false;
 
     onMount(async () => {
         if (window.prc?.getVersions) {
@@ -24,7 +25,7 @@
                 updateStatus = {
                     status: "available",
                     text: `Доступно обновление v${res.latestVersion}!`,
-                    url: res.releaseUrl
+                    url: res.releaseUrl || "https://github.com/MjKey/AniDeskPlus/releases"
                 };
             } else if (res.status === "latest") {
                 updateStatus = {
@@ -60,12 +61,11 @@
         <div class="app-info flex-column">
             <span class="app-title">AniDeskPlus</span>
             <p class="app-description">
-                Неофициальный десктоп-клиент для приложения <strong
+                Улучшенный неофициальный десктоп-клиент для приложения <strong
                     >Anixart</strong
-                >
-                с открытым исходным кодом. Разработан с использованием
+                > с открытым исходным кодом. Разработан с использованием
                 <strong>Node.js</strong>, <strong>Electron</strong>,
-                <strong>Svelte</strong>
+                <strong>Svelte 5</strong>
                 и <strong>AnixartJS</strong>.
             </p>
         </div>
@@ -76,7 +76,7 @@
         <div class="update-card flex-row">
             <div class="version-badge flex-column">
                 <span class="version-label">Версия приложения</span>
-                <span class="version-number">v{versionInfo?.anidesk || ""}</span>
+                <span class="version-number">v{versionInfo?.anidesk || ""} {#if versionInfo?.isDebug}<span class="debug-tag">[DEBUG]</span>{/if}</span>
             </div>
             <div class="update-actions flex-column">
                 <button class="update-btn flex-row" class:disabled={isChecking} onclick={checkUpdates}>
@@ -87,7 +87,7 @@
                         <span>{updateStatus.text}</span>
                         {#if updateStatus.url}
                             <button class="open-release-btn" onclick={() => winApi.openLink(updateStatus.url)}>
-                                Открыть страница релизов ↗
+                                Открыть страницу релизов ↗
                             </button>
                         {/if}
                     </div>
@@ -97,23 +97,23 @@
     </div>
 
     <div class="app-developers flex-column">
-        <span class="app-title">Разработчики</span>
+        <span class="app-title">Разработчик AniDeskPlus</span>
         <div class="developers flex-column">
             <div class="developer flex-row">
                 <img
-                    src="https://github.com/theDesConnet.png"
+                    src="https://github.com/MjKey.png"
                     width="100px"
-                    alt="icon"
+                    alt="MjKey avatar"
+                    loading="lazy"
                 />
                 <div class="dev-info">
-                    <span class="developer-name">DesConnet</span>
-                    <span class="developer-role">Главный разработчик</span>
+                    <span class="developer-name">MjKey</span>
+                    <span class="developer-role">Создатель форка & Главный разработчик AniDeskPlus</span>
                     <div class="social-links">
                         <button
+                            title="GitHub MjKey/AniDeskPlus"
                             onclick={() => {
-                                winApi.openLink(
-                                    `https://github.com/theDesConnet`,
-                                );
+                                winApi.openLink(`https://github.com/MjKey/AniDeskPlus`);
                             }}
                         >
                             <Icon
@@ -125,34 +125,68 @@
                     </div>
                 </div>
             </div>
-            <div class="developer flex-row">
-                <img
-                    src="https://github.com/hack1exe.png"
-                    width="100px"
-                    alt="icon"
-                />
-                <div class="dev-info">
-                    <span class="developer-name"
-                        >Michail Electronshik (aka Hack1exe)</span
-                    >
-                    <span class="developer-role">Разработчик</span>
-                    <div class="social-links">
-                        <button
-                            onclick={() => {
-                                winApi.openLink(
-                                    `https://github.com/hack1exe`,
-                                );
-                            }}
-                        >
-                            <Icon
-                                src={githubLogo}
-                                varColor="--main-text-color"
-                                size={{ width: 35, height: 35 }}
-                            />
-                        </button>
+        </div>
+
+        <!-- Свернутый слой авторов оригинального AniDesk -->
+        <div class="original-devs-container flex-column">
+            <button class="toggle-original-devs-btn flex-row" onclick={() => showOriginalDevs = !showOriginalDevs}>
+                <span>{showOriginalDevs ? "▼ Скрыть разработчиков оригинального AniDesk" : "► Разработчики оригинального AniDesk"}</span>
+            </button>
+
+            {#if showOriginalDevs}
+                <div class="original-devs-list flex-column">
+                    <div class="developer flex-row">
+                        <img
+                            src="https://github.com/theDesConnet.png"
+                            width="80px"
+                            alt="DesConnet avatar"
+                            loading="lazy"
+                        />
+                        <div class="dev-info">
+                            <span class="developer-name">DesConnet</span>
+                            <span class="developer-role">Разработчик оригинального AniDesk</span>
+                            <div class="social-links">
+                                <button
+                                    onclick={() => {
+                                        winApi.openLink(`https://github.com/theDesConnet`);
+                                    }}
+                                >
+                                    <Icon
+                                        src={githubLogo}
+                                        varColor="--main-text-color"
+                                        size={{ width: 30, height: 30 }}
+                                    />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="developer flex-row">
+                        <img
+                            src="https://github.com/hack1exe.png"
+                            width="80px"
+                            alt="Hack1exe avatar"
+                            loading="lazy"
+                        />
+                        <div class="dev-info">
+                            <span class="developer-name">Michail Electronshik (aka Hack1exe)</span>
+                            <span class="developer-role">Соразработчик оригинального AniDesk</span>
+                            <div class="social-links">
+                                <button
+                                    onclick={() => {
+                                        winApi.openLink(`https://github.com/hack1exe`);
+                                    }}
+                                >
+                                    <Icon
+                                        src={githubLogo}
+                                        varColor="--main-text-color"
+                                        size={{ width: 30, height: 30 }}
+                                    />
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
+            {/if}
         </div>
     </div>
 </div>
@@ -165,14 +199,26 @@
         padding-bottom: 40px;
     }
 
+    .debug-tag {
+        color: #e74c3c;
+        font-size: 14px;
+        margin-left: 6px;
+    }
+
     .developer-name {
         font-size: 18px;
         font-weight: bold;
         color: var(--main-text-color);
     }
 
+    .developer-role {
+        font-size: 13px;
+        color: var(--secondary-text-color);
+        margin-top: 2px;
+    }
+
     .dev-info {
-        margin-left: 10px;
+        margin-left: 15px;
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -180,7 +226,7 @@
 
     .developer {
         width: 100%;
-        margin-bottom: 30px;
+        margin-bottom: 20px;
         margin-top: 10px;
     }
 
@@ -197,6 +243,7 @@
 
     .developer img {
         border-radius: 50%;
+        object-fit: cover;
     }
 
     .about-program-title {
@@ -286,5 +333,32 @@
         text-decoration: underline;
         font-size: 12px;
         cursor: pointer;
+    }
+
+    .original-devs-container {
+        margin-top: 15px;
+        width: 100%;
+    }
+
+    .toggle-original-devs-btn {
+        background: transparent;
+        color: var(--secondary-text-color);
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        padding: 8px 0;
+        text-align: left;
+        transition: color 0.2s;
+    }
+
+    .toggle-original-devs-btn:hover {
+        color: var(--main-text-color);
+    }
+
+    .original-devs-list {
+        background-color: var(--alt-background-color);
+        border-radius: 12px;
+        padding: 15px 20px;
+        margin-top: 8px;
     }
 </style>

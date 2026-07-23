@@ -51,7 +51,7 @@
             <span class="third-text">Chrome v{window.versions.chrome}</span>
         </div>
         <div class="links-info flex-row">
-            <button onclick={() => winApi.openLink(`https://github.com/theDesConnet/AniDeskPlus`)}>
+            <button onclick={() => winApi.openLink(`https://github.com/MjKey/AniDeskPlus`)}>
             <Icon src={githubLogo} varColor="--third-text-color" size={{width: 30, height: 30}}/>
             </button>
         </div>

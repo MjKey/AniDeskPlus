@@ -74,35 +74,23 @@
         localStorage.setItem("skipDurations", JSON.stringify(parsed));
     }
 
-    function handleSkipMouseDown() {
-        skipButtonPressed = true;
-        skipLongPressTimeout = setTimeout(() => {
-            if (skipButtonPressed) {
-                showSkipSlider = true;
-                skipButtonPressed = false;
-            }
-        }, 600);
-    }
-
-    function handleSkipMouseUp() {
-        if (skipButtonPressed) {
-            clearTimeout(skipLongPressTimeout);
-            skipButtonPressed = false;
-            performSkip();
+    function handleSkipWheel(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.deltaY < 0) {
+            skipTime = Math.min(300, skipTime + 5);
+        } else if (e.deltaY > 0) {
+            skipTime = Math.max(5, skipTime - 5);
         }
-    }
-
-    function handleSkipMouseLeave() {
-        if (skipButtonPressed) {
-            clearTimeout(skipLongPressTimeout);
-            skipButtonPressed = false;
-        }
+        saveSkipTime(skipTime);
     }
 
     function performSkip() {
-        video.currentTime = video.currentTime + skipTime;
-        progressPercent = (video.currentTime / video.duration) * 100;
-        currentTime = utils.returnFormatedTime(video.currentTime);
+        if (video) {
+            video.currentTime = video.currentTime + skipTime;
+            progressPercent = (video.currentTime / video.duration) * 100;
+            currentTime = utils.returnFormatedTime(video.currentTime);
+        }
     }
 
     onDestroy(() => {
@@ -573,12 +561,12 @@
                     {/if}
                     <button
                         class="player-bottom-button"
-                        onmousedown={handleSkipMouseDown}
-                        onmouseup={handleSkipMouseUp}
-                        onmouseleave={handleSkipMouseLeave}
+                        title="Клик: перемотать | Колёсико мыши: изменить время ({skipTime} сек)"
+                        onclick={performSkip}
+                        onwheel={handleSkipWheel}
                     >
                         <img src="./assets/icons/skipOp.svg" alt="skipOp" />
-                        <span>Пропуск опенинга</span>
+                        <span>Быстрая перемотка {skipTime} сек.</span>
                     </button>
                 </div>
                 <button

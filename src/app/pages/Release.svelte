@@ -8,6 +8,7 @@
     import Slider from "../components/elements/Slider.svelte";
     import RelatedReleases from "../components/release/RelatedReleases.svelte";
     import AnimePoster from "../components/release/AnimePoster.svelte";
+    import ShikimoriWidget from "../components/release/ShikimoriWidget.svelte";
     import MinInfo from "../components/release/MinInfo.svelte";
     import BaseModal from "../components/modal/BaseModal.svelte";
     import SelectEpisodes from "../components/release/SelectEpisode.svelte";
@@ -204,6 +205,7 @@
                     />
                 </div>
                 <BookmarkStatsInfo item={r.release}  size={13} type="grid"/>
+                <ShikimoriWidget release={r.release} />
             </div>
             <div tabindex="-1" class="right-info-release flex-column">
                 <div class="release-title">{r.release.title_ru}</div>

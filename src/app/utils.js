@@ -43,6 +43,15 @@ module.exports = {
         releaseCardType: "full-row",
     },
 
+    appDefaultSettings: {
+        AutoUpdate: true,
+        EnableRPC: false,
+        EnableDevTools: false,
+        MinimizeToTray: true,
+        EnableEpisodeNotifications: true,
+        PreferredDubber: ""
+    },
+
     playingDefaultSettings: {
         defaultQuality: 1080,
         defaultSource: null,

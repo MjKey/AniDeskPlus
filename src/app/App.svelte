@@ -10,6 +10,8 @@
     import FirstRunModal from "./components/modal/FirstRunModal.svelte";
     import { notificationCount } from "./components/stores/notificationCount";
     import { fade } from "svelte/transition";
+    import { onMount, onDestroy } from "svelte";
+    import DebugConsole from "./components/gui/DebugConsole.svelte";
 
     window.utils = Utils;
 
@@ -51,10 +53,10 @@
         type: 3,
         state: "Ожидание...",
         largeImageKey: "anidesk-transparent",
-        largeImageText: "AniDesk - Anixart Client",
+        largeImageText: "AniDeskPlus - Anixart Client",
         instance: true,
         buttons: [
-            { label: "Ссылка на клиент", url: "https://anidesk.ds1nc.ru/" },
+            { label: "Ссылка на клиент", url: "https://github.com/MjKey/AniDeskPlus" },
         ],
     });
 
@@ -117,6 +119,102 @@
             .then((x) => notificationCount.set(x.count));
     }
 
+    async function checkBookmarkNewEpisodes() {
+        if (!utoken || !window.anixApi?.bookmark) return;
+        const enableNotifs = baseSettings?.EnableEpisodeNotifications ?? true;
+        if (!enableNotifs) return;
+
+        const preferredDubber = (baseSettings?.PreferredDubber || "").trim().toLowerCase();
+
+        try {
+            const res = await window.anixApi.bookmark.getBookmarks(0, 0);
+            if (!res || !res.content) return;
+
+            let cachedEpisodes = {};
+            try {
+                cachedEpisodes = JSON.parse(localStorage.getItem("bookmark_episodes_cache") || "{}");
+            } catch (e) {}
+
+            let updatedCache = { ...cachedEpisodes };
+
+            for (const item of res.content) {
+                const release = item.release || item;
+                if (!release || !release.id) continue;
+
+                const releaseId = release.id;
+                const currentEp = release.episodes_released || 0;
+                const prevEp = cachedEpisodes[releaseId];
+
+                if (prevEp !== undefined && currentEp > prevEp) {
+                    let allowNotif = true;
+                    if (preferredDubber) {
+                        try {
+                            const releaseDetails = await window.anixApi.release.get(releaseId);
+                            const dubbers = releaseDetails?.release?.dubbers || releaseDetails?.dubbers || [];
+                            const matchesDubber = dubbers.some(d =>
+                                (d.name || d.title || "").toLowerCase().includes(preferredDubber)
+                            );
+                            if (!matchesDubber) {
+                                allowNotif = false;
+                            }
+                        } catch (e) {}
+                    }
+
+                    if (allowNotif) {
+                        const releaseTitle = release.title_ru || release.title_original || "Аниме";
+                        window.notify?.send({
+                            title: `Новая серия! (${currentEp} сер.)`,
+                            body: `${releaseTitle} — вышла ${currentEp} серия!`,
+                            releaseId: releaseId
+                        });
+                    }
+                }
+
+                updatedCache[releaseId] = currentEp;
+            }
+
+            localStorage.setItem("bookmark_episodes_cache", JSON.stringify(updatedCache));
+        } catch (e) {
+            console.error("Error checking bookmark episodes:", e);
+        }
+    }
+
+    let intervalNotifications;
+    let intervalBookmarkCheck;
+
+    let isDebug = false;
+
+    onMount(async () => {
+        if (window.prc?.isDebug) {
+            isDebug = await window.prc.isDebug();
+        }
+
+        if (window.notify?.onNavigateRelease) {
+            window.notify.onNavigateRelease((releaseId) => {
+                if (window.updateViewportComponent) {
+                    window.updateViewportComponent(8, { id: releaseId });
+                }
+            });
+        }
+
+        // Check bookmark episode updates after initial launch
+        setTimeout(checkBookmarkNewEpisodes, 10000);
+        intervalBookmarkCheck = setInterval(checkBookmarkNewEpisodes, 300000); // каждые 5 минут
+
+        intervalNotifications = setInterval(() => {
+            if (window.anixApi?.notification) {
+                anixApi.notification
+                    .countNotifications()
+                    .then((x) => notificationCount.set(x.count));
+            }
+        }, 1800000); // Раз в 30 минут
+    });
+
+    onDestroy(() => {
+        if (intervalNotifications) clearInterval(intervalNotifications);
+        if (intervalBookmarkCheck) clearInterval(intervalBookmarkCheck);
+    });
+
     let views;
 
     let viewInfo = {
@@ -138,12 +236,6 @@
     window.addEventListener("resize", function handleResize(event) {
         isFullscreen = window.innerHeight === screen.height;
     });
-
-    setInterval(() => {
-        anixApi.notification
-            .countNotifications()
-            .then((x) => notificationCount.set(x.count));
-    }, 1800000); //Раз в 30 минут обновляем кол-во уведомлений
 </script>
 
 <main>
@@ -182,6 +274,9 @@
             </div>
         {/key}
     </div>
+    {#if isDebug}
+        <DebugConsole />
+    {/if}
 </main>
 
 <style>

@@ -153,7 +153,7 @@
         }}
     />
     <HotkeyElement
-        title="Пропуск опенинга"
+        title="Быстрая перемотка"
         value={playerSettings.hotkeys.hotkeySkipOpening}
         onSetHotKey={(e) => {
             playerSettings.hotkeys.hotkeySkipOpening = e;

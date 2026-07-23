@@ -1,7 +1,15 @@
 <script>
     import { pageHistory } from "../stores/pageHistory.js";
+    import { onMount } from "svelte";
 
     $: history = $pageHistory;
+    let isDebug = false;
+
+    onMount(async () => {
+        if (window.prc?.isDebug) {
+            isDebug = await window.prc.isDebug();
+        }
+    });
 
     function backToHistory() {
         if (history.length > 0) {
@@ -37,10 +45,15 @@
             />
         </svg>
     </div>
-    <div class="title-bar-text unselectable">AniDeskPlus <sup>β</sup></div>
+    <div class="title-bar-text unselectable">
+        AniDeskPlus <sup>β</sup>
+        {#if isDebug}
+            <span class="debug-badge">[DEBUG]</span>
+        {/if}
+    </div>
     <button
         class="title-bar-minimize button-title-bar"
-        onclick={titleBarAPI.minimize()}
+        onclick={() => titleBarAPI.minimize()}
         ><svg
             aria-hidden="true"
             role="img"
@@ -53,7 +66,7 @@
     >
     <button
         class="title-bar-maximize button-title-bar"
-        onclick={titleBarAPI.maximize()}
+        onclick={() => titleBarAPI.maximize()}
         ><svg
             aria-hidden="true"
             role="img"
@@ -72,7 +85,7 @@
     >
     <button
         class="title-bar-close button-title-bar"
-        onclick={titleBarAPI.close()}
+        onclick={() => titleBarAPI.close()}
         ><svg
             aria-hidden="true"
             role="img"
@@ -89,6 +102,16 @@
 </div>
 
 <style>
+    .debug-badge {
+        background-color: #e74c3c;
+        color: white;
+        font-size: 10px;
+        padding: 1px 5px;
+        border-radius: 4px;
+        margin-left: 6px;
+        font-weight: bold;
+    }
+
     .title-bar {
         position: absolute;
         top: 0;

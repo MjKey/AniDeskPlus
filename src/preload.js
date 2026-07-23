@@ -36,6 +36,21 @@ contextBridge.exposeInMainWorld('netElec', {
 
 contextBridge.exposeInMainWorld('prc', {
   getVersions: () => ipcRenderer.invoke('prc:getVersions'),
+  isDebug: () => ipcRenderer.invoke('prc:isDebug'),
+});
+
+contextBridge.exposeInMainWorld('notify', {
+  send: (data) => ipcRenderer.invoke('notify:send', data),
+  onNavigateRelease: (callback) => {
+    ipcRenderer.on('navigate:release', (_, releaseId) => callback(releaseId));
+  }
+});
+
+contextBridge.exposeInMainWorld('debugApi', {
+  onLog: (callback) => {
+    ipcRenderer.on('debug:log', (_, log) => callback(log));
+  },
+  sendLog: (type, message, data) => ipcRenderer.invoke('debug:send', { type, message, data })
 });
 
 contextBridge.exposeInMainWorld('discordRPC', {
