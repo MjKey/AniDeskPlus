@@ -43,6 +43,7 @@
     let isChatOpen = false;
     let showTogetherRoomModal = false;
     let unsubDeepLink = null;
+    let unsubTogetherEpisode = null;
 
     let currentTime = "0:00";
     let durationTime = "0:00";
@@ -593,12 +594,26 @@
 
         // Initialize AniTogether P2P client & SyncEngine
         p2pClient = getP2PClient();
-        syncEngine = new SyncEngine(p2pClient, { videoElement: video });
+        syncEngine = new SyncEngine(p2pClient, { 
+            videoElement: video,
+            releaseId: getReleaseId()
+        });
 
         const currentTogetherState = $togetherStore;
         if (currentTogetherState.roomCode && p2pClient.state === 'disconnected') {
             p2pClient.connect(currentTogetherState.roomCode, currentTogetherState.isHost);
         }
+
+        // Listen for episode changes driven by the Host via P2P
+        unsubTogetherEpisode = togetherStore.subscribe((state) => {
+            if (!state.isHost && state.currentEpisodeId && currentEpisode && state.currentEpisodeId !== currentEpisode.id) {
+                const targetEp = args.episodes.find((x) => x.id === state.currentEpisodeId);
+                if (targetEp) {
+                    currentEpisode = targetEp;
+                    playVideo(targetEp);
+                }
+            }
+        });
 
         if (typeof window !== "undefined" && window.togetherAPI?.onDeepLink) {
             unsubDeepLink = window.togetherAPI.onDeepLink((payload) => {
@@ -843,6 +858,10 @@
         if (syncEngine) {
             syncEngine.destroy();
             syncEngine = null;
+        }
+        if (unsubTogetherEpisode) {
+            unsubTogetherEpisode();
+            unsubTogetherEpisode = null;
         }
         if (p2pClient) {
             p2pClient.disconnect();

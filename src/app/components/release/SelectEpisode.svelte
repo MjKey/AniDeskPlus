@@ -1,10 +1,11 @@
 <script>
     import Preloader from "../gui/Preloader.svelte";
     import { createEventDispatcher, onMount } from "svelte";
-    import { AniLibriaParser, KodikParser } from "anixartjs";
+    import { AniLibriaParser, KodikParser, SibnetParser } from "anixartjs";
     import { localStorageWritable } from "@babichjacob/svelte-localstorage";
     import DropdownButton from "../buttons/DropdownButton.svelte";
     import { getReleasePositions } from "../../utils/watchPosition.js";
+    import { Pages } from "../../pages.js";
 
     import RoomModal from "../together/RoomModal.svelte";
 
@@ -212,9 +213,10 @@
 
                 case "Sibnet":
                     await utils.fallback(async () => {
-                        const link = await Sibnet.Parse(ep.url);
+                        const link = await (SibnetParser.getDirectLinks ? SibnetParser.getDirectLinks(ep.url) : (SibnetParser.getDirectLink ? SibnetParser.getDirectLink(ep.url) : null));
                         if (link) {
-                            availableQuality = { "720": { src: link } };
+                            const srcUrl = typeof link === 'string' ? link : (link["720"]?.src || link["720"]?.[0]?.src || link.src || link);
+                            availableQuality = { "720": { src: srcUrl } };
                             return true;
                         }
                         return false;
@@ -257,6 +259,99 @@
             console.error("Failed to download episode:", e);
         } finally {
             downloadingEpisodeId = null;
+        }
+    }
+
+    async function handlePlayEpisode(d, i) {
+        let availableQuality, link;
+
+        const sourceName = d.source?.name || d.source?.type?.name || currentSourceName || "Kodik";
+        switch (sourceName) {
+            case "Kodik":
+                let aQ = {};
+                const kLinks = await KodikParser.getDirectLinks(d.url);
+                for (const [key, value] of Object.entries(kLinks || {})) {
+                    const cleanKey = String(key).replace(/p$/i, '');
+                    const srcUrl = Array.isArray(value) ? value[0]?.src : value?.src;
+                    if (srcUrl) {
+                        aQ[cleanKey] = { src: srcUrl };
+                    }
+                }
+                availableQuality = aQ;
+                break;
+
+            case "Liberty":
+            case "Libria":
+                const aLinks = await AniLibriaParser.getDirectLinks(d.url);
+                availableQuality = aLinks;
+                break;
+
+            case "Sibnet":
+                await utils.fallback(async () => {
+                    const link = await (SibnetParser.getDirectLinks ? SibnetParser.getDirectLinks(d.url) : (SibnetParser.getDirectLink ? SibnetParser.getDirectLink(d.url) : null));
+                    if (!link) return false;
+
+                    const srcUrl = typeof link === 'string' ? link : (link["720"]?.src || link["720"]?.[0]?.src || link.src || link);
+                    availableQuality = { "720": { src: srcUrl } };
+                    return true;
+                }, 3);
+                break;
+        }
+
+        if (!playingSettings.disableHistory) {
+            anixApi.release.markEpisodeAsWatched(
+                args.id,
+                currentSourceId ?? i.episodes[0].source.id,
+                d.position,
+            );
+            anixApi.release.addToHistory(
+                args.id,
+                currentSourceId ?? i.episodes[0].source.id,
+                d.position,
+            );
+        }
+
+        const url =
+            availableQuality?.[String(playingSettings.defaultQuality)]?.src ??
+            availableQuality?.["1080"]?.src ??
+            availableQuality?.["720"]?.src ??
+            availableQuality?.["480"]?.src ??
+            availableQuality?.["360"]?.src ??
+            Object.values(availableQuality || {})[0]?.src;
+
+        if (playingSettings?.rememberSelection) {
+            updatePlayingSettings({
+                lastDubberId: currentDubberId ?? null,
+                lastDubberName: currentDubberName ?? null,
+                lastSourceId: currentSourceId ?? null,
+                lastSourceName: currentSourceName ?? null,
+            });
+        }
+
+        const finalSrc = url ? (url.startsWith('//') ? `https:${url}` : url) : "";
+
+        updateViewportComponent(Pages.PLAYER, {
+            src: finalSrc,
+            currentQuality: playingSettings.defaultQuality || 720,
+            availableQuality: availableQuality || {},
+            release: args,
+            episodes: i.episodes,
+            currentEpisode: d,
+        });
+    }
+
+    // Auto-play logic for AniTogether Guests when episode is forced
+    $: if (args?.togetherAutoPlay && !args._autoPlayedAction) {
+        if (episodes) {
+            episodes.then((i) => {
+                if (i && i.episodes) {
+                    const targetEp = i.episodes.find(e => e.id === args.togetherAutoPlay);
+                    if (targetEp) {
+                        args._autoPlayedAction = true;
+                        handlePlayEpisode(targetEp, i);
+                    }
+                }
+            }).catch(() => {});
         }
     }
 </script>
@@ -365,92 +460,7 @@
                 </div>
             {:then i}
                 {#each i.episodes as d}
-                    {@render baseCard(d, async () => {
-                        let availableQuality, link;
-
-                        const sourceName = d.source?.name || d.source?.type?.name || currentSourceName || "Kodik";
-                        switch (sourceName) {
-                            case "Kodik":
-                                let aQ = {};
-                                const kLinks = await KodikParser.getDirectLinks(
-                                    d.url,
-                                );
-                                for (const [key, value] of Object.entries(
-                                    kLinks || {},
-                                )) {
-                                    const cleanKey = String(key).replace(/p$/i, '');
-                                    const srcUrl = Array.isArray(value) ? value[0]?.src : value?.src;
-                                    if (srcUrl) {
-                                        aQ[cleanKey] = { src: srcUrl };
-                                    }
-                                }
-                                availableQuality = aQ;
-                                break;
-
-                            case "Liberty":
-                            case "Libria":
-                                const aLinks =
-                                    await AniLibriaParser.getDirectLinks(d.url);
-                                availableQuality = aLinks;
-                                break;
-
-                            case "Sibnet":
-                                await utils.fallback(async () => {
-                                    const link = await (SibnetParser.getDirectLinks ? SibnetParser.getDirectLinks(d.url) : SibnetParser.getDirectLink(d.url));
-                                    if (!link) return false;
-
-                                    const srcUrl = typeof link === 'string' ? link : (link["720"]?.src || link["720"]?.[0]?.src || link.src || link);
-                                    availableQuality = {
-                                        "720": {
-                                            src: srcUrl,
-                                        },
-                                    };
-                                    return true;
-                                }, 3);
-                                break;
-                        }
-
-                        if (!playingSettings.disableHistory) {
-                            anixApi.release.markEpisodeAsWatched(
-                                args.id,
-                                currentSourceId ?? i.episodes[0].source.id,
-                                d.position,
-                            );
-                            anixApi.release.addToHistory(
-                                args.id,
-                                currentSourceId ?? i.episodes[0].source.id,
-                                d.position,
-                            );
-                        }
-
-                        const url =
-                            availableQuality?.[String(playingSettings.defaultQuality)]?.src ??
-                            availableQuality?.["1080"]?.src ??
-                            availableQuality?.["720"]?.src ??
-                            availableQuality?.["480"]?.src ??
-                            availableQuality?.["360"]?.src ??
-                            Object.values(availableQuality || {})[0]?.src;
-
-                        if (playingSettings?.rememberSelection) {
-                            updatePlayingSettings({
-                                lastDubberId: currentDubberId ?? null,
-                                lastDubberName: currentDubberName ?? null,
-                                lastSourceId: currentSourceId ?? null,
-                                lastSourceName: currentSourceName ?? null,
-                            });
-                        }
-
-                        const finalSrc = url ? (url.startsWith('//') ? `https:${url}` : url) : "";
-
-                        updateViewportComponent(11, {
-                            src: finalSrc,
-                            currentQuality: playingSettings.defaultQuality || 720,
-                            availableQuality: availableQuality || {},
-                            release: args,
-                            episodes: i.episodes,
-                            currentEpisode: d,
-                        });
-                    })}
+                    {@render baseCard(d, () => handlePlayEpisode(d, i))}
                 {/each}
             {/await}
         {:else}
@@ -596,6 +606,13 @@
         background: var(--alt-gray-background-color, #2C2828);
         border-color: #56ccf2;
         color: #56ccf2;
+    }
+    .download-spinner-svg {
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        100% { transform: rotate(360deg); }
     }
 </style>
 

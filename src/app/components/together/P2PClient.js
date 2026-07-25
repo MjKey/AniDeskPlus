@@ -1,5 +1,6 @@
 import { SignalingAdapter, compressSdpToken, decompressSdpToken } from './SignalingAdapter.js';
 import { togetherStore } from '../stores/togetherStore.js';
+import { get } from 'svelte/store';
 
 let globalP2PClientInstance = null;
 
@@ -58,6 +59,13 @@ export class P2PClient {
   async connect(roomCode, isHost = false) {
     this.roomCode = roomCode;
     this.isHost = isHost;
+    
+    // Sync peerId with store to ensure consistent senderId across chat and player syncing
+    const storeState = get(togetherStore);
+    if (storeState && storeState.peerId) {
+      this.peerId = storeState.peerId;
+    }
+
     this._setState('connecting');
 
     // Reset PC & state
@@ -191,6 +199,10 @@ export class P2PClient {
 
     try {
       if (signal.type === 'join' && this.isHost) {
+        if (this.pc && (this.pc.signalingState !== 'stable' || this.state === 'connected')) {
+          console.log('[P2P] Host is already negotiating or connected. Ignoring duplicate join heartbeat.');
+          return;
+        }
         console.log('[P2P] Guest requested join. Re-creating Host offer...');
         this._initPeerConnection();
         await this._createHostOffer();
@@ -259,14 +271,13 @@ export class P2PClient {
     if (!this.pc) {
       this._initPeerConnection();
     }
+    if (!this.dataChannel && !this.pc.localDescription) {
+      this.dataChannel = this.pc.createDataChannel('together-data', { ordered: true });
+      this._setupDataChannel(this.dataChannel);
+    }
     if (!this.pc.localDescription) {
-      if (this.isHost) {
-        const offer = await this.pc.createOffer();
-        await this.pc.setLocalDescription(offer);
-      } else {
-        const offer = await this.pc.createOffer();
-        await this.pc.setLocalDescription(offer);
-      }
+      const offer = await this.pc.createOffer();
+      await this.pc.setLocalDescription(offer);
     }
 
     // Small delay to collect initial ICE candidates into local SDP

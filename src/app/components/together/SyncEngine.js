@@ -196,14 +196,15 @@ export class SyncEngine {
     broadcastHostState(action, extraPayload = {}) {
         if (this.isRemoteActionExecuting) return;
         if (!this.isHost()) return;
-        if (!this.videoElement) return;
+        if (!this.videoElement && action !== 'episodeChange') return;
 
         const payload = {
             type: 'STATE_SYNC',
             action: action,
-            currentTime: this.videoElement.currentTime || 0,
-            isPaused: this.videoElement.paused,
+            currentTime: this.videoElement ? (this.videoElement.currentTime || 0) : 0,
+            isPaused: this.videoElement ? this.videoElement.paused : false,
             episodeId: extraPayload.episodeId !== undefined ? extraPayload.episodeId : this.getEpisodeId(),
+            releaseId: this.options.releaseId || null,
             timestamp: Date.now(),
             ...extraPayload
         };

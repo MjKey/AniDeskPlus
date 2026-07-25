@@ -310,11 +310,14 @@
         </div>
         <BaseModal
             modalComponent={SelectEpisodes}
-            showed={showSelectEpisodeModal}
+            showed={showSelectEpisodeModal || (args && args.togetherAutoPlay !== undefined && !args._autoPlayed)}
             modalSize={{ width: "1000px", height: "580px" }}
-            modalArgs={r.release}
+            modalArgs={{ ...r.release, togetherAutoPlay: args?.togetherAutoPlay }}
             bind:modalTitle={modalSubTitle}
-            on:closeModal={() => (showSelectEpisodeModal = false)}
+            on:closeModal={() => {
+                showSelectEpisodeModal = false;
+                if (args) args._autoPlayed = true;
+            }}
         />
         <BaseModal
             modalComponent={CommentsModal}

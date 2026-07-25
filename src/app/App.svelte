@@ -13,6 +13,9 @@
     import { fade } from "svelte/transition";
     import { onMount, onDestroy } from "svelte";
     import DebugConsole from "./components/gui/DebugConsole.svelte";
+    import { getP2PClient } from "./components/together/P2PClient.js";
+    import { togetherStore } from "./components/stores/togetherStore.js";
+    import PlayerPage from "./pages/Player.svelte";
 
     window.utils = Utils;
 
@@ -223,6 +226,8 @@
     let unsubNavigate = null;
     let unsubFullscreen = null;
 
+    let unsubP2PAppMessage = null;
+
     onMount(async () => {
         if (window.prc?.isDebug) {
             isDebug = await window.prc.isDebug();
@@ -257,6 +262,32 @@
                     .catch((e) => console.error("Notification interval count error:", e));
             }
         }, 1800000); // Раз в 30 минут
+
+        unsubP2PAppMessage = getP2PClient().onMessage((data) => {
+            let msg = data;
+            if (typeof data === 'string') {
+                try { msg = JSON.parse(data); } catch (e) {}
+            }
+            if (!msg || !msg.type) return;
+
+            // Handle STATE_SYNC specifically for episode changes when Guest is not in Player
+            if (msg.type === 'STATE_SYNC' || msg.type === 'PLAYER_COMMAND') {
+                const payload = msg.payload || msg;
+                const { action, episodeId, releaseId } = payload;
+                if (action === 'episodeChange' && episodeId !== undefined && episodeId !== null) {
+                    // Update store so when Player mounts, it uses the correct episode
+                    togetherStore.setCurrentEpisodeId(episodeId);
+                    
+                    // If we are not currently viewing the Player, navigate to it!
+                    if (viewInfo?.viewportComponent !== PlayerPage && window.updateViewportComponent) {
+                        const relId = releaseId || payload.releaseId;
+                        if (relId) {
+                            window.updateViewportComponent(Pages.RELEASE, { id: relId, togetherAutoPlay: episodeId });
+                        }
+                    }
+                }
+            }
+        });
     });
 
     onDestroy(() => {
@@ -266,6 +297,7 @@
         if (unsubFirstRun) unsubFirstRun();
         if (unsubNavigate) unsubNavigate();
         if (unsubFullscreen) unsubFullscreen();
+        if (unsubP2PAppMessage) unsubP2PAppMessage();
         if (timeoutBookmarkCheck) clearTimeout(timeoutBookmarkCheck);
         if (intervalNotifications) clearInterval(intervalNotifications);
         if (intervalBookmarkCheck) clearInterval(intervalBookmarkCheck);

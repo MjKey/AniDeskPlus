@@ -49,7 +49,7 @@ export function compressSdpToken(sdpObj) {
 export function decompressSdpToken(token) {
   if (!token) return null;
   try {
-    let b64 = token.replace(/-/g, '+').replace(/_/g, '/');
+    let b64 = token.replace(/\s/g, '').replace(/-/g, '+').replace(/_/g, '/');
     while (b64.length % 4) b64 += '=';
     const binary = atob(b64);
     const bytes = new Uint8Array(binary.length);
