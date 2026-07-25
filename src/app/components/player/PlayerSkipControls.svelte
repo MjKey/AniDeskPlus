@@ -107,7 +107,7 @@
 <style>
     .skip-interval-row {
         position: absolute;
-        bottom: 120px;
+        bottom: 150px;
         right: 25px;
         z-index: 10;
         display: flex;

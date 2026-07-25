@@ -14,6 +14,7 @@
     export let playVideo = null;
     export let reloadPlayer = null;
     export let isStalled = false;
+    export let captureFrame = null;
 
     const dispatch = createEventDispatcher();
 
@@ -63,17 +64,6 @@
     }
 </script>
 
-<!-- Middle Bar -->
-<div class="gui-middle-bar">
-    <button class="gui-play-button" onclick={togglePlay}>
-        {#if isPaused}
-            ▶
-        {:else}
-            ❚❚
-        {/if}
-    </button>
-</div>
-
 <!-- Controls Bar (Top Content inside Bottom Bar) -->
 <div class="top-content container flex-row">
     <div class="left-content">
@@ -120,6 +110,23 @@
         {/if}
         <button
             class="gui-bottom-button"
+            title="Сохранить кадр"
+            onclick={(e) => {
+                e.stopPropagation();
+                if (captureFrame) captureFrame();
+            }}
+        >
+            <img
+                src="./assets/icons/camera.svg"
+                alt="camera"
+                width="22px"
+                height="22px"
+                style="filter: invert(1);"
+            />
+        </button>
+        <button
+            class="gui-bottom-button"
+            title="Настройки"
             onclick={(e) => {
                 e.stopPropagation();
                 showSettings = !showSettings;
@@ -147,7 +154,7 @@
                 height="26px"
             />
         </button>
-        <button class="gui-bottom-button" onclick={() => {}}>
+        <button class="gui-bottom-button" title="Картинка в картинке" onclick={() => {}}>
             <img
                 src="./assets/icons/pipButton.svg"
                 alt="PiP"
@@ -155,7 +162,7 @@
                 height="28px"
             />
         </button>
-        <button class="gui-bottom-button" onclick={toggleFullscreen}>
+        <button class="gui-bottom-button" title="Полноэкранный режим" onclick={toggleFullscreen}>
             <img
                 src="./assets/icons/{isFullscreen
                     ? 'exitFullscreen.svg'
@@ -167,6 +174,9 @@
         </button>
     </div>
 </div>
+
+<!-- Timeline Slot (Timeline is rendered BELOW buttons and ABOVE bottom navigation) -->
+<slot name="timeline" />
 
 <!-- Bottom Navigation Bar -->
 <div class="bottom-content container flex-row">

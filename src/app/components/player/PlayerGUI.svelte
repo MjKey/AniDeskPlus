@@ -23,6 +23,7 @@
     export let playVideo;
     export let reloadPlayer = null;
     export let showReloadHint = false;
+    export let captureFrame = null;
     export let cEpisode = args.currentEpisode;
     export let dropdownShowed = false;
     export let transparentPercent = 50;
@@ -259,21 +260,25 @@
         />
     </div>
 
+    <!-- Center Play/Pause Button -->
+    <div class="gui-middle-bar">
+        <button
+            class="gui-play-button"
+            onclick={(e) => {
+                e.stopPropagation();
+                if (video) video.paused ? video.play() : video.pause();
+            }}
+        >
+            {#if isPaused}
+                ▶
+            {:else}
+                ❚❚
+            {/if}
+        </button>
+    </div>
+
     <!-- Bottom Bar Container -->
     <div class="gui-bottom-bar flex-column">
-        <!-- Timeline Component -->
-        <PlayerTimeline
-            {video}
-            {progressPercent}
-            {loadedPercent}
-            bind:isScrubbing
-            {skipTimes}
-            on:scrub={(e) => {
-                currentTime = e.detail.formattedTime;
-                progressPercent = e.detail.percent;
-            }}
-        />
-
         <!-- Controls Component -->
         <PlayerControls
             {video}
@@ -288,12 +293,27 @@
             release={args.release}
             {playVideo}
             {reloadPlayer}
+            {captureFrame}
             isStalled={showReloadHint}
             on:forceHide={forceHide}
             on:showEpisodesDropdown={showEpisodesDropdown}
             on:showDubbersDropdown={showDubbersDropdown}
             on:showRelatedDropdown={showRelatedReleasesDropdown}
         >
+            <svelte:fragment slot="timeline">
+                <PlayerTimeline
+                    {video}
+                    {progressPercent}
+                    {loadedPercent}
+                    bind:isScrubbing
+                    {skipTimes}
+                    on:scrub={(e) => {
+                        currentTime = e.detail.formattedTime;
+                        progressPercent = e.detail.percent;
+                    }}
+                />
+            </svelte:fragment>
+
             <svelte:fragment slot="skip-controls">
                 <PlayerSkipControls
                     {activeSkipType}
@@ -330,6 +350,38 @@
         transition: opacity 0.5s;
         opacity: 1;
         pointer-events: auto;
+    }
+
+    .gui-middle-bar {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 5;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: auto;
+    }
+
+    .gui-play-button {
+        display: flex;
+        border-radius: 100%;
+        width: 64px;
+        height: 64px;
+        text-align: center;
+        justify-content: center;
+        align-items: center;
+        background-color: var(--player-middle-button);
+        transition: background-color 0.2s ease-in-out, transform 0.15s ease;
+        color: var(--main-text-color);
+        font-size: 20px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    }
+
+    .gui-play-button:hover {
+        background-color: var(--player-middle-button-select);
+        transform: scale(1.08);
     }
 
     .gui-dropdown-left {

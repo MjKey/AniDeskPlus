@@ -99,6 +99,39 @@
         }
     }
 
+    function captureFrame() {
+        if (!video) return;
+        try {
+            const canvasEl = document.createElement("canvas");
+            const w = video.videoWidth || defaultCanvasSize.width;
+            const h = video.videoHeight || defaultCanvasSize.height;
+            canvasEl.width = w;
+            canvasEl.height = h;
+
+            const ctx = canvasEl.getContext("2d");
+            const sourceEl = (availableGPU && upscaleEnabled && canvas) ? canvas : video;
+            ctx.drawImage(sourceEl, 0, 0, w, h);
+
+            const dataUrl = canvasEl.toDataURL("image/png");
+            const epName = currentEpisode?.name ? `_${currentEpisode.name}` : "";
+            const relTitle = args?.release?.title_ru || args?.release?.title_original || "Anime";
+            const cleanTitle = relTitle.replace(/[/\\?%*:|"<>]/g, "");
+            const fileName = `${cleanTitle}${epName}_${currentTime.replace(":", "-")}.png`;
+
+            const link = document.createElement("a");
+            link.href = dataUrl;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showSkipToast("Кадр сохранён!");
+        } catch (e) {
+            console.error("[Player] Capture frame failed:", e);
+            showSkipToast("Ошибка сохранения кадра");
+        }
+    }
+
     function getReleaseId() {
         return args?.release?.id || args?.id || null;
     }
@@ -769,6 +802,7 @@
         bind:cEpisode={currentEpisode}
         {reloadPlayer}
         {showReloadHint}
+        {captureFrame}
         transparentPercent={playerSettings.opacityInterface}
         {changeQuality}
         {changeUpscale}
