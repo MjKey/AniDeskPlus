@@ -15,6 +15,8 @@
     export let reloadPlayer = null;
     export let isStalled = false;
     export let captureFrame = null;
+    export let togglePiP = null;
+    export let isPiPActive = false;
 
     const dispatch = createEventDispatcher();
 
@@ -154,7 +156,15 @@
                 height="26px"
             />
         </button>
-        <button class="gui-bottom-button" title="Картинка в картинке" onclick={() => {}}>
+        <button
+            class="gui-bottom-button"
+            class:active={isPiPActive}
+            title="Картинка в картинке"
+            onclick={(e) => {
+                e.stopPropagation();
+                if (togglePiP) togglePiP();
+            }}
+        >
             <img
                 src="./assets/icons/pipButton.svg"
                 alt="PiP"

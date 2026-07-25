@@ -77,6 +77,42 @@
     let activeEpisodeRequestId = 0;
     let showReloadHint = false;
     let reloadHintTimeout = null;
+    let isPiPActive = false;
+    let autoPipActivated = false;
+
+    async function togglePiP() {
+        if (!video) return;
+        try {
+            if (document.pictureInPictureElement) {
+                await document.exitPictureInPicture();
+            } else if (document.pictureInPictureEnabled && video.readyState >= 2) {
+                await video.requestPictureInPicture();
+            }
+        } catch (e) {
+            console.error("[PiP] Error toggling Picture-in-Picture:", e);
+        }
+    }
+
+    async function handleAutoPiPOnMinimize() {
+        if (!video) return;
+        if (document.visibilityState === "hidden") {
+            if (!video.paused && !video.ended && document.pictureInPictureEnabled && !document.pictureInPictureElement) {
+                try {
+                    autoPipActivated = true;
+                    await video.requestPictureInPicture();
+                } catch (e) {
+                    console.error("[Auto-PiP] Failed to enter PiP on minimize:", e);
+                }
+            }
+        } else if (document.visibilityState === "visible") {
+            if (autoPipActivated && document.pictureInPictureElement) {
+                try {
+                    await document.exitPictureInPicture();
+                } catch (e) {}
+                autoPipActivated = false;
+            }
+        }
+    }
 
     function resetReloadHintTimer() {
         showReloadHint = false;
@@ -423,6 +459,7 @@
             });
         }
         document.addEventListener("mousemove", hideOnIdle);
+        document.addEventListener("visibilitychange", handleAutoPiPOnMinimize);
         init();
     });
 
@@ -541,6 +578,14 @@
 
         hlsManager.init(video, (percent) => {
             loadedPercent = percent;
+        });
+
+        video.addEventListener("enterpictureinpicture", () => {
+            isPiPActive = true;
+        });
+        video.addEventListener("leavepictureinpicture", () => {
+            isPiPActive = false;
+            autoPipActivated = false;
         });
 
         const syncDuration = () => {
@@ -759,6 +804,11 @@
         clearTimeout(resumeToastTimeout);
 
         document.removeEventListener("mousemove", hideOnIdle);
+        document.removeEventListener("visibilitychange", handleAutoPiPOnMinimize);
+
+        if (document.pictureInPictureElement) {
+            document.exitPictureInPicture().catch(() => {});
+        }
 
         if (video) {
             if (!video.muted) {
@@ -803,6 +853,8 @@
         {reloadPlayer}
         {showReloadHint}
         {captureFrame}
+        {togglePiP}
+        {isPiPActive}
         transparentPercent={playerSettings.opacityInterface}
         {changeQuality}
         {changeUpscale}

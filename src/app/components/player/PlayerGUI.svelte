@@ -24,6 +24,8 @@
     export let reloadPlayer = null;
     export let showReloadHint = false;
     export let captureFrame = null;
+    export let togglePiP = null;
+    export let isPiPActive = false;
     export let cEpisode = args.currentEpisode;
     export let dropdownShowed = false;
     export let transparentPercent = 50;
@@ -294,6 +296,8 @@
             {playVideo}
             {reloadPlayer}
             {captureFrame}
+            {togglePiP}
+            {isPiPActive}
             isStalled={showReloadHint}
             on:forceHide={forceHide}
             on:showEpisodesDropdown={showEpisodesDropdown}
