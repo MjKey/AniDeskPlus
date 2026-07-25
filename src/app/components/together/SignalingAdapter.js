@@ -47,10 +47,47 @@ export function compressSdpToken(sdpObj) {
 }
 
 export function decompressSdpToken(token) {
-  if (!token) return null;
+  if (!token || typeof token !== 'string') return null;
+
+  let cleanToken = token.trim().replace(/^["']|["']$/g, '');
+
+  // Extract token from URL if full deep-link or query param was pasted
+  if (cleanToken.includes('token=')) {
+    const match = cleanToken.match(/token=([^&]+)/);
+    if (match && match[1]) cleanToken = decodeURIComponent(match[1]);
+  }
+
+  // 1. Raw SDP Text format (starts with v=0)
+  if (cleanToken.startsWith('v=0') || cleanToken.includes('a=fingerprint')) {
+    const type = cleanToken.includes('a=setup:active') ? 'answer' : 'offer';
+    return { type, sdp: cleanToken };
+  }
+
+  // 2. Direct JSON string format
+  if (cleanToken.startsWith('{') && cleanToken.endsWith('}')) {
+    try {
+      const obj = JSON.parse(cleanToken);
+      if (obj.sdp && obj.type) return obj;
+      if (obj.sdp) return { type: 'offer', sdp: obj.sdp };
+    } catch (e) {}
+  }
+
+  // Sanitize Base64 format
+  let b64 = cleanToken.replace(/\s/g, '').replace(/-/g, '+').replace(/_/g, '/');
+  while (b64.length % 4) b64 += '=';
+
+  // 3. Uncompressed Base64 JSON format
   try {
-    let b64 = token.replace(/\s/g, '').replace(/-/g, '+').replace(/_/g, '/');
-    while (b64.length % 4) b64 += '=';
+    const decodedStr = atob(b64);
+    if (decodedStr.startsWith('{') && decodedStr.endsWith('}')) {
+      const obj = JSON.parse(decodedStr);
+      if (obj.sdp && obj.type) return obj;
+      if (obj.sdp) return { type: 'offer', sdp: obj.sdp };
+    }
+  } catch (e) {}
+
+  // 4. Pako Deflated Base64 Token format
+  try {
     const binary = atob(b64);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) {
@@ -59,7 +96,7 @@ export function decompressSdpToken(token) {
     const jsonStr = pako.inflate(bytes, { to: 'string' });
     const obj = JSON.parse(jsonStr);
 
-    const type = obj.t === 'o' ? 'offer' : 'answer';
+    const type = obj.t === 'o' ? 'offer' : (obj.t === 'a' ? 'answer' : (obj.type || 'offer'));
     if (obj.sdp) {
       return { type, sdp: obj.sdp };
     }
