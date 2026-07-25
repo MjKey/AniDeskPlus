@@ -1,0 +1,8 @@
+{
+  "AutoUpdate": true,
+  "EnableRPC": false,
+  "EnableDevTools": false,
+  "MinimizeToTray": true,
+  "EnableEpisodeNotifications": true,
+  "PreferredDubber": ""
+}

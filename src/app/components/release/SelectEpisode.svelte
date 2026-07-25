@@ -267,7 +267,7 @@
             {:then i}
                 {#each i.episodes as d}
                     {@render baseCard(d, async () => {
-                        let avaliableQuality, link;
+                        let availableQuality, link;
 
                         switch (currentSourceName) {
                             case "Kodik":
@@ -282,14 +282,14 @@
                                         src: value[0].src,
                                     };
                                 }
-                                avaliableQuality = aQ;
+                                availableQuality = aQ;
                                 break;
 
                             case "Liberty":
                             case "Libria":
                                 const aLinks =
                                     await AniLibriaParser.getDirectLinks(d.url);
-                                avaliableQuality = aLinks;
+                                availableQuality = aLinks;
                                 break;
 
                             case "Sibnet":
@@ -297,7 +297,7 @@
                                     const link = await Sibnet.Parse(d.url);
                                     if (!link) return;
 
-                                    avaliableQuality = {
+                                    availableQuality = {
                                         "720": {
                                             src: link,
                                         },
@@ -322,9 +322,9 @@
                         }
 
                         const url =
-                            avaliableQuality[
+                            availableQuality[
                                 String(playingSettings.defaultQuality)
-                            ]?.src ?? avaliableQuality["720"]?.src;
+                            ]?.src ?? availableQuality["720"]?.src;
 
                         if (playingSettings?.rememberSelection) {
                             updatePlayingSettings({
@@ -338,7 +338,7 @@
                         updateViewportComponent(11, {
                             src: `${URL.canParse(url) ? url : `https:${url}`}`,
                             currentQuality: 720,
-                            avaliableQuality,
+                            availableQuality,
                             release: args,
                             episodes: i.episodes,
                             currentEpisode: d,

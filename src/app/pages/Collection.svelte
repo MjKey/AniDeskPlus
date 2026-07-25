@@ -1,4 +1,5 @@
 <script>
+    import { Pages } from "../pages.js";
     import Preloader from "../components/gui/Preloader.svelte";
     import ProfileAvatar from "../components/profile/ProfileAvatar.svelte";
     import AnimeFullRowCard from "../components/elements/AnimeFullRowCard.svelte";
@@ -102,7 +103,7 @@
             <button
                 class="author flex-row"
                 onclick={() =>
-                    updateViewportComponent(9, c.info.collection.creator.id)}
+                    updateViewportComponent(Pages.PROFILE, c.info.collection.creator.id)}
             >
                 <div class="collection-author-image">
                     <ProfileAvatar

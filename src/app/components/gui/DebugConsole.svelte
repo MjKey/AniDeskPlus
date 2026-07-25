@@ -17,8 +17,9 @@
     }
 
     onMount(() => {
+        let unsubLog = null;
         if (window.debugApi?.onLog) {
-            window.debugApi.onLog((log) => {
+            unsubLog = window.debugApi.onLog((log) => {
                 addLog(log);
             });
         }
@@ -43,6 +44,7 @@
         });
 
         return () => {
+            if (unsubLog) unsubLog();
             window.removeEventListener("error", handleErr);
             window.removeEventListener("unhandledrejection", handleErr);
         };

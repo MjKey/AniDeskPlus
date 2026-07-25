@@ -1,4 +1,5 @@
 <script>
+    import { Pages } from "../../pages.js";
     import AnimePoster from "../release/AnimePoster.svelte";
     import Dot from "./Dot.svelte";
     export let inModal = false;
@@ -13,7 +14,7 @@
         anime?.status?.id !== 3;
 </script>
 
-<anime-full-row-card class="flex-row" onclick={() => updateViewportComponent(8, { id: anime.id })}>
+<anime-full-row-card class="flex-row" onclick={() => updateViewportComponent(Pages.RELEASE, { id: anime.id })}>
     <div class="full-row-anime-poster">
         <AnimePoster size={{ width: 140, height: 205 }} zIndex={inModal ? 2 : 0} posterInfo={{poster: anime.image, title: anime.title ?? anime.title_ru}} shadow={true} borderRadius={20} posterStyle={anime.profile_list_status ?? 0}/>
     </div>

@@ -1,35 +1,11 @@
 <!--Anidesk player-->
 
 <script>
+    import { Pages } from "../pages.js";
     export let args;
-    import {
-        Original,
-        ModeA,
-        render,
-        ModeBB,
-        ModeB,
-        DoG,
-        BilateralMean,
-        CNNM,
-        CNNSoftM,
-        CNNSoftVL,
-        CNNVL,
-        CNNUL,
-        CNNx2M,
-        CNNx2VL,
-        DenoiseCNNx2VL,
-        GANx3L,
-        GANx4UUL,
-        GANUUL,
-        ModeAA,
-        ModeCA,
-        CNNx2UL,
-        ModeC,
-    } from "anime4k-webgpu";
     import { localStorageWritable } from "@babichjacob/svelte-localstorage";
-    import { onDestroy } from "svelte";
+    import { onDestroy, onMount } from "svelte";
     import PlayerGui from "../components/player/PlayerGUI.svelte";
-    import { onMount } from "svelte";
     import { AniLibriaParser, SibnetParser, KodikParser } from "anixartjs";
     import { playerSettingsStore } from "../components/stores/pageHistory.js";
     import utils from "../utils";
@@ -37,60 +13,50 @@
     import { savePosition, getSavedPosition, clearPosition } from "../utils/watchPosition.js";
     import { searchShikimoriAnimeGraphQL, getShikimoriUserRate, saveShikimoriUserRate } from "../utils/shikimori.js";
 
-    const upscaleModeMap = {
-        0: DoG,
-        1: BilateralMean,
-        2: CNNM,
-        3: CNNSoftM,
-        4: CNNSoftVL,
-        5: CNNVL,
-        6: CNNUL,
-        7: GANUUL,
-        8: CNNx2M,
-        9: CNNx2VL,
-        10: DenoiseCNNx2VL,
-        11: CNNx2UL,
-        12: GANx3L,
-        13: GANx4UUL,
-        14: ModeA,
-        15: ModeB,
-        16: ModeC,
-        17: ModeAA,
-        18: ModeBB,
-        19: ModeCA,
-    };
+    // Managers
+    import { DiscordRpcManager } from "../components/stores/discordRpcManager.js";
+    import { SleepTimer } from "../components/stores/sleepTimer.js";
+    import { HlsManager } from "../components/stores/hlsManager.js";
+    import { VolumeManager } from "../components/stores/volumeManager.js";
+    import { HotkeyManager } from "../components/stores/hotkeyManager.js";
+    import { UpscaleRenderer } from "../components/stores/upscaleRenderer.js";
 
-    const PLAYER_LAST_VOLUME_KEY = "PlayerLastVolume";
-    const PLAYER_SAVE_VOLUME_ENABLED_KEY = "PlayerSaveUserVolumeEnabled";
+    // Manager instances
+    let hlsManager = new HlsManager();
+    let volumeManager = new VolumeManager();
+    let rpcManager = null;
+    let sleepTimerManager = null;
+    let hotkeyManager = null;
+    let upscaleRenderer = null;
 
-    let currentTime,
-        durationTime,
-        upscaleSettings,
-        playerSettings,
-        playingSettings,
-        volPercent,
-        persistedVolume = null,
-        persistedSaveVolumeEnabled = null;
+    let currentTime = "0:00";
+    let durationTime = "0:00";
+    let upscaleSettings;
+    let playerSettings;
+    let playingSettings;
+    let volPercent = 100;
 
     let defaultCanvasSize = {
         width: screen.width,
         height: screen.height,
     };
 
-    let video,
-        canvas,
-        timePos,
-        volControl,
-        timeout,
-        mainDiv,
-        hls,
-        currentEpisode,
-        startTimestamp;
+    let video;
+    let canvas;
+    let timePos;
+    let volControl;
+    let timeout;
+    let mainDiv;
+    let currentEpisode;
+    let startTimestamp;
 
-    let progressPercent, loadedPercent;
+    let progressPercent = 0;
+    let loadedPercent = 0;
 
-    let isHidden, isPaused, isTimePosClick, isFullscreen;
-    let pressedKeys = new Set();
+    let isHidden = false;
+    let isPaused = false;
+    let isTimePosClick = false;
+    let isFullscreen = false;
 
     let skipTimes = { op: null, ed: null };
     let activeSkipType = null;
@@ -102,6 +68,12 @@
     let resumeToastTimeout = null;
     let hasRestoredPosition = false;
     let lastWatchSaveTime = 0;
+    let upscaleEnabled = false;
+    let loading = true;
+    let forceHideActive = false;
+    let unsubFullscreen = null;
+    let availableGPU = false;
+    let sleepTimerLabel = "Выкл";
 
     function getReleaseId() {
         return args?.release?.id || args?.id || null;
@@ -124,16 +96,10 @@
 
         const relId = getReleaseId();
         const ep = currentEpisode || args?.currentEpisode;
-        if (!relId || !ep) {
-            console.log('[WatchPosition] Restore check skipped: relId or ep missing', { relId, ep });
-            return;
-        }
+        if (!relId || !ep) return;
 
         const saved = getSavedPosition(relId, ep);
-        console.log(`[WatchPosition] Restoring check for relId=${relId}, ep=${ep.position || ep.name}:`, saved);
-
         if (saved && typeof saved.time === 'number' && saved.time > 5 && !saved.completed && (video.duration - saved.time) > 15) {
-            console.log(`[WatchPosition] Restored video time to ${saved.time}s`);
             video.currentTime = saved.time;
             hasRestoredPosition = true;
             resumeToastMessage = `Продолжено с ${utils.returnFormatedTime(saved.time)}`;
@@ -165,7 +131,6 @@
                 const isCompleted = maxEp > 0 && epNum >= maxEp;
                 const status = isCompleted ? "completed" : (userRate?.status || "watching");
                 await saveShikimoriUserRate(shikiAnime.id, shikiToken, shikiUser.id, status, epNum, userRate?.id);
-                console.log(`[Shikimori] Auto-synced episode ${epNum} for ${args.release.title_ru}`);
             }
         } catch (e) {
             console.error("[Shikimori] Progress sync error:", e);
@@ -188,17 +153,6 @@
         }
     }
 
-    onDestroy(() => {
-        const relId = getReleaseId();
-        const ep = currentEpisode || args?.currentEpisode;
-        if (video && video.duration && relId && ep) {
-            savePosition(relId, ep, video.currentTime, video.duration);
-            if (video.currentTime / video.duration >= 0.75) {
-                syncShikimoriWatchProgress(ep);
-            }
-        }
-    });
-
     function showSkipToast(msg) {
         skipToastMessage = msg;
         if (skipToastTimeout) clearTimeout(skipToastTimeout);
@@ -215,7 +169,6 @@
 
         if (skipTimes.op && cTime >= skipTimes.op.start && cTime < skipTimes.op.end) {
             if (isAutoOp && !isOpAutoSkipped) {
-                console.log(`[Player] Auto-skipping OP from ${cTime.toFixed(1)}s to ${skipTimes.op.end}s`);
                 isOpAutoSkipped = true;
                 performSkipOp();
             } else if (!isAutoOp) {
@@ -223,7 +176,6 @@
             }
         } else if (skipTimes.ed && cTime >= skipTimes.ed.start && cTime < skipTimes.ed.end) {
             if (isAutoEd && !isEdAutoSkipped) {
-                console.log(`[Player] Auto-skipping ED from ${cTime.toFixed(1)}s to ${skipTimes.ed.end}s`);
                 isEdAutoSkipped = true;
                 performSkipEd();
             } else if (!isAutoEd) {
@@ -262,7 +214,6 @@
 
     function performSkipOp() {
         if (skipTimes.op && video) {
-            console.log(`[Player] Seeking past OP to ${skipTimes.op.end}s`);
             video.currentTime = Number(skipTimes.op.end);
             showSkipToast("Опенинг пропущен");
             activeSkipType = null;
@@ -271,7 +222,6 @@
 
     function performSkipEd() {
         if (skipTimes.ed && video) {
-            console.log(`[Player] Seeking past ED to ${skipTimes.ed.end}s`);
             video.currentTime = Number(skipTimes.ed.end);
             showSkipToast("Эндинг пропущен");
             activeSkipType = null;
@@ -303,96 +253,6 @@
         upscaleSettings = value;
     });
 
-    let upscaleEnabled = upscaleSettings.enabled;
-
-    let sleepTimerType = 'off';
-    let sleepTimerValue = 0;
-    let sleepEpisodesRemaining = 0;
-    let sleepTimerInterval = null;
-    let sleepTimerEndTime = null;
-    let sleepTimerLabel = "Выкл";
-
-    function clearSleepTimer() {
-        if (sleepTimerInterval) {
-            clearInterval(sleepTimerInterval);
-            sleepTimerInterval = null;
-        }
-        sleepTimerEndTime = null;
-        sleepTimerType = 'off';
-        sleepTimerValue = 0;
-        sleepEpisodesRemaining = 0;
-        sleepTimerLabel = "Выкл";
-    }
-
-    async function executeSleepTimerAction() {
-        clearSleepTimer();
-        const action = playingSettings?.sleepTimerAction ?? "pause";
-
-        switch (action) {
-            case "pause":
-                if (video) video.pause();
-                break;
-            case "closePlayer":
-                if (video) video.pause();
-                updateViewportComponent(8, { id: args.release.id });
-                break;
-            case "closeApp":
-                if (video) video.pause();
-                systemPower.quitApp();
-                break;
-            case "sleep":
-                if (video) video.pause();
-                systemPower.sleep();
-                break;
-            case "shutdown":
-                if (video) video.pause();
-                systemPower.shutdown();
-                break;
-        }
-    }
-
-    function changeSleepTimer(config) {
-        clearSleepTimer();
-        if (!config || config.type === 'off') {
-            sleepTimerLabel = "Выкл";
-            return;
-        }
-
-        if (config.type === 'episodes') {
-            const count = Math.max(1, parseInt(config.count || 1, 10));
-            sleepTimerType = 'episodes';
-            sleepEpisodesRemaining = count;
-            sleepTimerLabel = count === 1 ? "1 серия" : `${count} с.`;
-            return;
-        }
-
-        if (config.type === 'minutes') {
-            const mins = Math.max(1, parseInt(config.minutes || 1, 10));
-            sleepTimerType = 'minutes';
-            sleepTimerValue = mins;
-            sleepTimerLabel = `${mins} мин.`;
-            sleepTimerEndTime = Date.now() + mins * 60 * 1000;
-
-            sleepTimerInterval = setInterval(() => {
-                if (!sleepTimerEndTime) return;
-                const remainingSec = Math.round((sleepTimerEndTime - Date.now()) / 1000);
-
-                if (remainingSec <= 0) {
-                    executeSleepTimerAction();
-                } else {
-                    const m = Math.floor(remainingSec / 60);
-                    const s = remainingSec % 60;
-                    sleepTimerLabel = `${m}:${s < 10 ? "0" + s : s}`;
-                }
-            }, 1000);
-        }
-    }
-
-    async function changeUpscale(enabled) {
-        upscaleEnabled = enabled;
-        await renderUpscale();
-    }
-
     function updatePlayingSettings(patch) {
         playingSettings = {
             ...playingSettings,
@@ -418,9 +278,6 @@
         });
     }
 
-    //aspect-16-9
-    //aspect-4-3
-    //aspect-fit
     let aspectRatio = `aspect-${playerSettings.defaultAspectRatio}`;
 
     function changeAspectRatio(aspect) {
@@ -428,116 +285,16 @@
         aspectRatio = `aspect-${aspect}`;
     }
 
-    function clampVolume(value) {
-        return Math.min(1, Math.max(0, Number(value) || 0));
+    function handleSetVolume(vol, persist = true) {
+        volPercent = volumeManager.setVolume(
+            vol,
+            video,
+            volControl,
+            playerSettings,
+            persistPlayerSettings,
+            persist
+        );
     }
-
-    function saveVolumePreference(volume) {
-        if (!playerSettings?.saveUserVolume?.enabled) return;
-
-        const normalizedVolume = clampVolume(volume);
-
-        persistPlayerSettings({
-            ...playerSettings,
-            saveUserVolume: {
-                ...playerSettings.saveUserVolume,
-                lastValue: normalizedVolume,
-            },
-        });
-
-        settings.set(PLAYER_LAST_VOLUME_KEY, normalizedVolume);
-        settings.set(PLAYER_SAVE_VOLUME_ENABLED_KEY, true);
-    }
-
-    async function loadPersistedVolume() {
-        const [savedVolume, savedSaveVolumeEnabled] =
-            await Promise.all([
-                settings.get(PLAYER_LAST_VOLUME_KEY),
-                settings.get(PLAYER_SAVE_VOLUME_ENABLED_KEY),
-            ]);
-
-        persistedVolume =
-            typeof savedVolume === "number" ? clampVolume(savedVolume) : null;
-        persistedSaveVolumeEnabled =
-            typeof savedSaveVolumeEnabled === "boolean"
-                ? savedSaveVolumeEnabled
-                : null;
-    }
-
-    function getPersistedPlayerSettings() {
-        try {
-            const rawSettings = localStorage.getItem("playerSettings");
-            return rawSettings ? JSON.parse(rawSettings) : null;
-        } catch (error) {
-            return null;
-        }
-    }
-
-    function getEffectivePlayerSettings() {
-        const effectiveSettings = {
-            ...utils.playerDefaultSettings,
-            ...(getPersistedPlayerSettings() ?? playerSettings ?? {}),
-        };
-
-        if (persistedSaveVolumeEnabled !== null) {
-            effectiveSettings.saveUserVolume = {
-                ...effectiveSettings.saveUserVolume,
-                enabled: persistedSaveVolumeEnabled,
-            };
-        }
-
-        return effectiveSettings;
-    }
-
-    function getInitialVolume() {
-        const effectivePlayerSettings = getEffectivePlayerSettings();
-
-        if (
-            effectivePlayerSettings?.saveUserVolume?.enabled &&
-            persistedVolume !== null
-        ) {
-            return persistedVolume;
-        }
-
-        if (effectivePlayerSettings?.saveUserVolume?.enabled) {
-            return clampVolume(
-                effectivePlayerSettings.saveUserVolume.lastValue ??
-                    effectivePlayerSettings.defaultVolume / 100,
-            );
-        }
-
-        return clampVolume(effectivePlayerSettings?.defaultVolume / 100);
-    }
-
-    function syncPersistedVolume() {
-        if (!video || video.muted) return;
-
-        saveVolumePreference(video.volume);
-    }
-
-    function syncVolumeUI(volume = video?.volume ?? 0) {
-        const normalizedVolume = clampVolume(volume);
-
-        volPercent = normalizedVolume * 100;
-        if (volControl) {
-            volControl.value = normalizedVolume;
-        }
-    }
-
-    function setVolume(volume, persist = true) {
-        if (!video) return;
-
-        const normalizedVolume = clampVolume(volume);
-        video.volume = normalizedVolume;
-        syncVolumeUI(normalizedVolume);
-
-        if (persist) {
-            saveVolumePreference(normalizedVolume);
-        }
-    }
-
-    let loading = true;
-    let forceHideActive = false;
 
     function forceHide() {
         isHidden = true;
@@ -568,15 +325,48 @@
         }
     }
 
-    function handleResize(event) {
-        isFullscreen = window.innerHeight === screen.height;
-    }
-
     document.addEventListener("mousemove", hideOnIdle);
 
-    window.addEventListener("resize", handleResize);
+    async function changeUpscale(enabled) {
+        upscaleEnabled = enabled;
+        await renderUpscale();
+    }
+
+    async function renderUpscale() {
+        if (!availableGPU) return;
+        canvas = await waitForElm(".player-canvas");
+        if (!upscaleRenderer && video && canvas) {
+            upscaleRenderer = new UpscaleRenderer(video, canvas, defaultCanvasSize);
+        }
+        if (upscaleRenderer) {
+            await upscaleRenderer.render(upscaleEnabled, upscaleSettings?.mode ?? 0);
+        }
+    }
+
+    async function changeQuality(quality) {
+        const qualitySrc = args.availableQuality[String(quality)]?.src;
+        if (!qualitySrc) return;
+        hlsManager.changeQuality(qualitySrc);
+    }
+
+    function changeSleepTimer(config) {
+        if (sleepTimerManager) {
+            sleepTimerManager.change(config);
+        }
+    }
 
     onMount(async () => {
+        if (window.availableGPU) {
+            window.availableGPU.then((res) => (availableGPU = res));
+        }
+        if (window.elecWindow?.isFullScreen) {
+            isFullscreen = await window.elecWindow.isFullScreen();
+        }
+        if (window.elecWindow?.onFullscreenChange) {
+            unsubFullscreen = window.elecWindow.onFullscreenChange((isFs) => {
+                isFullscreen = isFs;
+            });
+        }
         init();
     });
 
@@ -589,7 +379,7 @@
         hasRestoredPosition = false;
         resumeToastMessage = null;
         updateSkipTimes();
-        let avaliableQuality, link;
+        let availableQuality, link;
         let source =
             typeof episode.source == "number"
                 ? args.episodes.find((x) => episode.source == x.source["@id"])
@@ -607,7 +397,7 @@
                         src: value[0].src,
                     };
                 }
-                avaliableQuality = aQ;
+                availableQuality = aQ;
                 break;
 
             case "Liberty":
@@ -616,8 +406,7 @@
                     const aLinks = await AniLibriaParser.getDirectLinks(
                         episode.url,
                     );
-                    avaliableQuality = aLinks;
-
+                    availableQuality = aLinks;
                     success = true;
                 }, 3);
                 break;
@@ -627,195 +416,75 @@
                     const link = await Sibnet.Parse(episode.url);
                     if (!link) return;
 
-                    avaliableQuality = {
+                    availableQuality = {
                         "720": {
                             src: link,
                         },
                     };
-
                     success = true;
                 }, 3);
                 break;
         }
 
         const url =
-            avaliableQuality[String(playingSettings.defaultQuality)]?.src ??
-            avaliableQuality["720"]?.src;
+            availableQuality[String(playingSettings.defaultQuality)]?.src ??
+            availableQuality["720"]?.src;
 
-        args.avaliableQuality = avaliableQuality;
-
+        args.availableQuality = availableQuality;
         link = `${URL.canParse(url) ? url : `https:${url}`}`;
 
-        if (Hls.isSupported() && !new URL(link).pathname.endsWith(".mp4")) {
-            hls.detachMedia();
-            hls.destroy();
-
-            hls = new Hls();
-
-            hls.on(Hls.Events.BUFFER_APPENDING, (e, data) => {
-                loadedPercent =
-                    (data.frag._streams.video.endPTS / video.duration) * 100;
-            });
-
-            hls.loadSource(link);
-            hls.attachMedia(video);
-        } else {
-            video.src = link;
-        }
-
+        hlsManager.loadSource(link);
         args.src = link;
 
-        await video.play();
-
-        if (!playingSettings.disableHistory) {
-            anixApi.release.markEpisodeAsWatched(
-                args.release.id,
-                args.episodes[0].source.id,
-                currentEpisode.position,
-            );
-            anixApi.release.addToHistory(
-                args.release.id,
-                args.episodes[0].source.id,
-                currentEpisode.position,
-            );
+        if (analytics) {
+            analytics.trackEvent("play_anime", {
+                source: source.name,
+                name: episode.name,
+                releaseTitle: args.release.title_ru,
+                dubber: source.type.name,
+            });
         }
-
-        analytics.trackEvent("play_anime", {
-            source: source.name,
-            name: episode.name,
-            releaseTitle: args.release.title_ru,
-            dubber: source.type.name,
-        });
 
         startTimestamp = Date.now();
-
-        discordRPC.setActivity({
-            type: 3,
-            state: `${episode.name}`,
-            details: args.release.title_ru.slice(0, 127),
-            largeImageKey: "anidesk-transparent",
-            largeImageText: "AniDeskPlus - Anixart Client",
-            startTimestamp: startTimestamp - video.currentTime * 1000,
-            endTimestamp:
-                startTimestamp + (video.duration - video.currentTime) * 1000,
-            instance: true,
-            buttons: [
-                {
-                    label: "Ссылка на релиз",
-                    url: `https://anixart.app/release/${args.release.id}`,
-                },
-                { label: "Ссылка на клиент", url: "https://github.com/MjKey/AniDeskPlus" },
-            ],
-        });
-    }
-
-    async function renderUpscale() {
-        canvas = await waitForElm(".player-canvas");
-        await render({
-            video,
-            canvas,
-            pipelineBuilder: (device, inputTexture) => {
-                const nativeDimensions = {
-                    width: video.videoWidth,
-                    height: video.videoHeight,
-                };
-
-                const targetDimensions = {
-                    width: defaultCanvasSize.width,
-                    height: defaultCanvasSize.height,
-                };
-
-                return [
-                    upscaleEnabled
-                        ? new upscaleModeMap[upscaleSettings.mode]({
-                              device,
-                              inputTexture,
-                              nativeDimensions,
-                              targetDimensions,
-                          })
-                        : new Original({
-                              device,
-                              inputTexture,
-                              nativeDimensions,
-                              targetDimensions,
-                          }),
-                ];
-            },
-        });
-    }
-
-    async function changeQuality(quality) {
-        const qualitySrc = args.avaliableQuality[String(quality)]?.src;
-        if (!qualitySrc) return;
-
-        const url = URL.canParse(qualitySrc)
-            ? qualitySrc
-            : `https:${qualitySrc}`;
-
-        if (Hls.isSupported()) {
-            const currentTime = video.currentTime;
-            const isPausedNow = video.paused;
-
-            hls.detachMedia();
-            hls.destroy();
-
-            hls = new Hls();
-
-            hls.on(Hls.Events.BUFFER_APPENDING, (e, data) => {
-                loadedPercent =
-                    (data.frag._streams.video.endPTS / video.duration) * 100;
-            });
-
-            hls.loadSource(url);
-            hls.attachMedia(video);
-
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                video.currentTime = currentTime;
-                if (!isPausedNow) {
-                    video.play();
-                }
-            });
-        } else {
-            video.src = url;
-            video.play();
+        if (rpcManager) {
+            rpcManager.setPlaying(episode.name, video?.currentTime, video?.duration);
         }
-
-        if (avaliableGPU) await renderUpscale();
-
-        args.src = url;
-        args.currentQuality = quality;
     }
 
     async function init() {
+        rpcManager = new DiscordRpcManager({
+            releaseId: args.release.id,
+            releaseTitle: args.release.title_ru,
+        });
+
+        sleepTimerManager = new SleepTimer({
+            getAction: () => playingSettings?.sleepTimerAction ?? "pause",
+            onLabelChange: (lbl) => (sleepTimerLabel = lbl),
+            handlers: {
+                pause: () => video?.pause(),
+                closePlayer: () => updateViewportComponent(Pages.RELEASE, { id: args.release.id }),
+            },
+        });
+
+        currentEpisode = args.currentEpisode;
+
         mainDiv = await waitForElm(".anidesk-player");
         video = await waitForElm(".player-video");
-        await loadPersistedVolume();
 
-        if (Hls.isSupported() && !new URL(args.src).pathname.endsWith(".mp4")) {
-            hls = new Hls();
+        hlsManager.init(video, (percent) => {
+            loadedPercent = percent;
+        });
 
-            hls.on(Hls.Events.BUFFER_APPENDING, (e, data) => {
-                loadedPercent =
-                    (data.frag._streams.video.endPTS / video.duration) * 100;
-            });
-
-            hls.loadSource(args.src);
-            hls.attachMedia(video);
-        } else {
-            video.src = args.src;
-        }
-
-        video.volume = getInitialVolume();
+        await volumeManager.loadPersistedVolume();
+        const initialVol = volumeManager.getInitialVolume(playerSettings, utils.playerDefaultSettings);
+        video.volume = initialVol;
 
         volControl = await waitForElm("#volume-position");
-
-        syncVolumeUI(video.volume);
+        volPercent = volumeManager.setVolume(video.volume, video, volControl, playerSettings, persistPlayerSettings, true);
 
         volControl.oninput = () => {
-            setVolume(volControl.value);
+            handleSetVolume(volControl.value);
         };
-
-        saveVolumePreference(video.volume);
 
         video.onloadedmetadata = () => {
             loading = true;
@@ -832,202 +501,6 @@
             tryRestoreWatchPosition();
         };
 
-        video.onended = () => {
-            const relId = getReleaseId();
-            const ep = currentEpisode || args?.currentEpisode;
-            if (relId && ep && video.duration) {
-                savePosition(relId, ep, video.duration, video.duration);
-            }
-            if (playerSettings.autoplayEpisode) {
-                playNextEpisode();
-            }
-        };
-
-        video.onvolumechange = () => {
-            syncVolumeUI(video.volume);
-            syncPersistedVolume();
-        };
-
-        video.ontimeupdate = () => {
-            if (!video || !video.duration) return;
-            currentTime = utils.returnFormatedTime(video.currentTime);
-            progressPercent = (video.currentTime / video.duration) * 100;
-
-            tryRestoreWatchPosition();
-            trySaveWatchPosition();
-            checkAndTriggerSkip(video.currentTime);
-        };
-
-        updateSkipTimes();
-
-        if (avaliableGPU) await renderUpscale();
-        await video.play();
-
-        window.onwheel = (e) => {
-            if (e.deltaY > 0) {
-                setVolume(video.volume - 0.05);
-            } else if (e.deltaY < 0) {
-                setVolume(video.volume + 0.05);
-            }
-        };
-
-        window.onkeydown = (e) => {
-            pressedKeys.add(e.code);
-
-            for (const [action, keys] of Object.entries(
-                playerSettings.hotkeys,
-            )) {
-                if (keys.length !== pressedKeys.size) continue;
-
-                if (keys.every((key) => pressedKeys.has(key))) {
-                    switch (action) {
-                        case "hotkeyPlayPause":
-                            isPaused ? video.play() : video.pause();
-                            break;
-
-                        case "hotkeyMute":
-                            video.muted = !video.muted;
-                            break;
-
-                        case "hotkeyFullscreen":
-                            isFullscreen
-                                ? elecWindow.exitFullscreen()
-                                : elecWindow.enterFullscreen();
-                            break;
-
-                        case "hotkeyForward":
-                            video.currentTime += 10;
-                            break;
-
-                        case "hotkeyBackward":
-                            video.currentTime -= 10;
-                            break;
-
-                        case "hotkeySkipOpening":
-                            if (skipTimes.op && video.currentTime >= skipTimes.op.start && video.currentTime < skipTimes.op.end) {
-                                performSkipOp();
-                            } else if (skipTimes.ed && video.currentTime >= skipTimes.ed.start && video.currentTime < skipTimes.ed.end) {
-                                performSkipEd();
-                            } else {
-                                video.currentTime += 85;
-                            }
-                            break;
-
-                        case "hotkeyNextEpisode":
-                            let e =
-                                args.episodes[
-                                    args.episodes.findIndex(
-                                        (x) =>
-                                            x.position ==
-                                            currentEpisode.position,
-                                    ) + 1
-                                ];
-
-                            if (e) {
-                                currentEpisode = e;
-                                playVideo(currentEpisode);
-                            }
-                            break;
-
-                        case "hotkeyPrevEpisode":
-                            let p =
-                                args.episodes[
-                                    args.episodes.findIndex(
-                                        (x) =>
-                                            x.position ==
-                                            currentEpisode.position,
-                                    ) - 1
-                                ];
-
-                            if (p) {
-                                currentEpisode = p;
-                                playVideo(currentEpisode);
-                            }
-                            break;
-                    }
-
-                    pressedKeys.clear();
-                    break;
-                }
-            }
-
-            switch (e.code) {
-                case "Escape":
-                    if (isFullscreen) {
-                        elecWindow.exitFullscreen();
-                    }
-                    updateViewportComponent(8, { id: args.release.id });
-                    break;
-            }
-        };
-
-        window.onkeyup = (e) => {
-            pressedKeys.delete(e.code);
-        };
-
-        // Очищаем массив нажатых клавиш при потере фокуса окна, чтобы небыло проблем
-        // когда клавиша осталась в массиве из-за чего хоткеи перестают работать
-        window.onblur = () => {
-            pressedKeys.clear();
-        }
-
-        durationTime = utils.returnFormatedTime(video.duration);
-        startTimestamp = Date.now();
-
-        video.onpause = () => {
-            isPaused = true;
-            loading = false;
-
-            discordRPC.setActivity({
-                type: 3,
-                state: `${currentEpisode.name}`,
-                details: args.release.title_ru.slice(0, 127),
-                largeImageKey: "anidesk-transparent",
-                largeImageText: "AniDeskPlus - Anixart Client",
-                instance: true,
-                buttons: [
-                    {
-                        label: "Ссылка на релиз",
-                        url: `https://anixart.app/release/${args.release.id}`,
-                    },
-                    {
-                        label: "Ссылка на клиент",
-                        url: "https://github.com/MjKey/AniDeskPlus",
-                    },
-                ],
-            });
-        };
-
-        video.onplay = (e) => {
-            isPaused = false;
-            loading = false;
-
-            startTimestamp = Date.now();
-
-            discordRPC.setActivity({
-                type: 3,
-                state: `${currentEpisode.name}`,
-                details: args.release.title_ru.slice(0, 127),
-                largeImageKey: "anidesk-transparent",
-                largeImageText: "AniDeskPlus - Anixart Client",
-                startTimestamp: startTimestamp - video.currentTime * 1000,
-                endTimestamp:
-                    startTimestamp +
-                    (video.duration - video.currentTime) * 1000,
-                instance: true,
-                buttons: [
-                    {
-                        label: "Ссылка на релиз",
-                        url: `https://anixart.tv/release/${args.release.id}`,
-                    },
-                    {
-                        label: "Ссылка на клиент",
-                        url: "https://github.com/MjKey/AniDeskPlus",
-                    },
-                ],
-            });
-        };
-
         video.onended = async () => {
             const relId = getReleaseId();
             const ep = currentEpisode || args?.currentEpisode;
@@ -1035,15 +508,8 @@
                 savePosition(relId, ep, video.duration, video.duration);
             }
 
-            if (sleepTimerType === 'episodes') {
-                sleepEpisodesRemaining--;
-                if (sleepEpisodesRemaining <= 0) {
-                    await executeSleepTimerAction();
-                    return;
-                } else {
-                    sleepTimerLabel = sleepEpisodesRemaining === 1 ? "1 серия" : `${sleepEpisodesRemaining} с.`;
-                }
-            }
+            const triggered = await sleepTimerManager.onEpisodeEnd();
+            if (triggered) return;
 
             if (playerSettings.autoplayEpisode) {
                 let e = args.episodes.find(
@@ -1067,6 +533,18 @@
             checkAndTriggerSkip(video.currentTime);
         };
 
+        video.onpause = () => {
+            isPaused = true;
+            loading = false;
+            if (rpcManager) rpcManager.setPaused(currentEpisode.name);
+        };
+
+        video.onplay = () => {
+            isPaused = false;
+            loading = false;
+            if (rpcManager) rpcManager.setPlaying(currentEpisode.name, video.currentTime, video.duration);
+        };
+
         let source =
             typeof args.currentEpisode.source == "number"
                 ? args.episodes.find(
@@ -1076,58 +554,107 @@
 
         rememberPlaybackSelection(source);
 
-        analytics.trackEvent("play_anime", {
-            source: source.name,
-            name: args.currentEpisode.name,
-            releaseTitle: args.release.title_ru,
-            dubber: source.type.name,
-        });
+        if (analytics) {
+            analytics.trackEvent("play_anime", {
+                source: source.name,
+                name: args.currentEpisode.name,
+                releaseTitle: args.release.title_ru,
+                dubber: source.type.name,
+            });
+        }
 
-        discordRPC.setActivity({
-            type: 3,
-            state: `${currentEpisode.name}`,
-            details: args.release.title_ru.slice(0, 127),
-            largeImageKey: "anidesk-transparent",
-            largeImageText: "AniDeskPlus - Anixart Client",
-            startTimestamp: startTimestamp - video.currentTime * 1000,
-            endTimestamp:
-                startTimestamp + (video.duration - video.currentTime) * 1000,
-            instance: true,
-            buttons: [
-                {
-                    label: "Ссылка на релиз",
-                    url: `https://anixart.tv/release/${args.release.id}`,
+        hotkeyManager = new HotkeyManager({
+            getHotkeys: () => playerSettings?.hotkeys ?? {},
+            handlers: {
+                hotkeyPlayPause: () => (isPaused ? video.play() : video.pause()),
+                hotkeyMute: () => (video.muted = !video.muted),
+                hotkeyFullscreen: () =>
+                    isFullscreen
+                        ? window.elecWindow?.exitFullscreen()
+                        : window.elecWindow?.enterFullscreen(),
+                hotkeyForward: () => (video.currentTime += 10),
+                hotkeyBackward: () => (video.currentTime -= 10),
+                hotkeySkipOpening: () => {
+                    if (skipTimes.op && video.currentTime >= skipTimes.op.start && video.currentTime < skipTimes.op.end) {
+                        performSkipOp();
+                    } else if (skipTimes.ed && video.currentTime >= skipTimes.ed.start && video.currentTime < skipTimes.ed.end) {
+                        performSkipEd();
+                    } else {
+                        video.currentTime += 85;
+                    }
                 },
-                { label: "Ссылка на клиент", url: "https://github.com/MjKey/AniDeskPlus" },
-            ],
+                hotkeyNextEpisode: () => {
+                    let idx = args.episodes.findIndex((x) => x.position == currentEpisode.position);
+                    let e = args.episodes[idx + 1];
+                    if (e) {
+                        currentEpisode = e;
+                        playVideo(currentEpisode);
+                    }
+                },
+                hotkeyPrevEpisode: () => {
+                    let idx = args.episodes.findIndex((x) => x.position == currentEpisode.position);
+                    let p = args.episodes[idx - 1];
+                    if (p) {
+                        currentEpisode = p;
+                        playVideo(currentEpisode);
+                    }
+                },
+                onEscape: () => {
+                    if (isFullscreen) window.elecWindow?.exitFullscreen();
+                    updateViewportComponent(Pages.RELEASE, { id: args.release.id });
+                },
+                onWheel: (deltaY) => {
+                    if (deltaY > 0) {
+                        handleSetVolume(video.volume - 0.05);
+                    } else if (deltaY < 0) {
+                        handleSetVolume(video.volume + 0.05);
+                    }
+                },
+            },
         });
+        hotkeyManager.attach();
+
+        updateSkipTimes();
+
+        if (availableGPU) await renderUpscale();
+        hlsManager.loadSource(args.src);
+        await video.play();
+
+        if (rpcManager) {
+            rpcManager.setPlaying(currentEpisode.name, video.currentTime, video.duration);
+        }
     }
 
     onDestroy(() => {
-        clearSleepTimer();
-        //Destroy all event listeners
-        if (hls) {
-            hls.detachMedia();
-            hls.destroy();
+        const relId = getReleaseId();
+        const ep = currentEpisode || args?.currentEpisode;
+        if (video && video.duration && relId && ep) {
+            savePosition(relId, ep, video.currentTime, video.duration);
+            if (video.currentTime / video.duration >= 0.75) {
+                syncShikimoriWatchProgress(ep);
+            }
         }
-        document.removeEventListener("mousemove", hideOnIdle);
-        window.removeEventListener("resize", handleResize);
-        window.onwheel = null;
-        window.onkeydown = null;
-        window.onkeyup = null;
-        window.onblur = null;
-        video.onpause = null;
-        video.onplay = null;
-        video.ontimeupdate = null;
-        video.onloadedmetadata = null;
-        video.onwaiting = null;
-        video.onplaying = null;
-        video.onvolumechange = null;
 
-        if (video && !video.muted) {
-            syncPersistedVolume();
+        if (unsubFullscreen) unsubFullscreen();
+        if (sleepTimerManager) sleepTimerManager.clear();
+        if (hotkeyManager) hotkeyManager.detach();
+        if (hlsManager) hlsManager.destroy();
+
+        document.removeEventListener("mousemove", hideOnIdle);
+
+        if (video) {
+            if (!video.muted) {
+                volumeManager.syncPersistedVolume(video, playerSettings, persistPlayerSettings);
+            }
+            video.onpause = null;
+            video.onplay = null;
+            video.ontimeupdate = null;
+            video.onloadedmetadata = null;
+            video.onwaiting = null;
+            video.onplaying = null;
+            video.onended = null;
+            video = null;
         }
-        video = null;
 
         if (volControl) {
             volControl.oninput = null;
@@ -1178,7 +705,7 @@
 
     <span class:hide={!loading} class="loader"></span>
 
-    {#if avaliableGPU}
+    {#if availableGPU}
         <canvas
             class="player-canvas {aspectRatio}"
             width={screen.width}
@@ -1188,8 +715,8 @@
     <video
         class="player-video"
         crossorigin="anonymous"
-        class:full={!avaliableGPU}
-        class:hide={avaliableGPU}
+        class:full={!availableGPU}
+        class:hide={availableGPU}
     ></video>
 </div>
 

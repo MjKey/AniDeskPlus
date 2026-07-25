@@ -3,12 +3,12 @@
 </script>
 
 <div class="container">
-    <div class="notavaliable flex-column">
+    <div class="notavailable flex-column">
         <div class="lottie-container">
-            <Lottie path="./assets/lottie/notavaliable.json" autoplay="true" renderer="svg"></Lottie>
+            <Lottie path="./assets/lottie/notavailable.json" autoplay="true" renderer="svg"></Lottie>
         </div>
-        <div class="text-notavaliable flex-column">
-            <span class="title">Данный фунцкионал сейчас находится в разработке</span>
+        <div class="text-notavailable flex-column">
+            <span class="title">Данный функционал сейчас находится в разработке</span>
             <span class="bottom">Приносим свои извинения, со временем он будет доступен</span>
         </div>
     </div>
@@ -27,7 +27,7 @@
         text-align: center;
     }
 
-    .text-notavaliable {
+    .text-notavailable {
         display: flex;
         align-items: center;
         margin-bottom: 10px;
@@ -41,7 +41,7 @@
         justify-content: center;
     }
 
-    .notavaliable {
+    .notavailable {
         justify-content: center;
         align-items: center;
         position: relative;

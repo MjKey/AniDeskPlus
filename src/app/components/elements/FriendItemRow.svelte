@@ -1,10 +1,11 @@
 <script>
+    import { Pages } from "../../pages.js";
     export let profile;
     import { Lottie } from "lottie-svelte";
     import ProfileAvatar from "../profile/ProfileAvatar.svelte";
 </script>
 
-<button class="friend-item-row flex-row" on:click={() => updateViewportComponent(9, profile.id)}>
+<button class="friend-item-row flex-row" on:click={() => updateViewportComponent(Pages.PROFILE, profile.id)}>
     <div class="friend-item-row-image">
         <ProfileAvatar
             size={{ height: 40, width: 40 }}

@@ -28,6 +28,12 @@ contextBridge.exposeInMainWorld('elecWindow', {
   getSize: () => ipcRenderer.invoke('window:getSize'),
   exitFullscreen: () => ipcRenderer.invoke('window:leaveFullScreen'),
   enterFullscreen: () => ipcRenderer.invoke('window:enterFullScreen'),
+  isFullScreen: () => ipcRenderer.invoke('window:isFullScreen'),
+  onFullscreenChange: (callback) => {
+    const handler = (_, isFs) => callback(isFs);
+    ipcRenderer.on('fullscreen:changed', handler);
+    return () => ipcRenderer.removeListener('fullscreen:changed', handler);
+  }
 });
 
 contextBridge.exposeInMainWorld('netElec', {
@@ -42,15 +48,24 @@ contextBridge.exposeInMainWorld('prc', {
 contextBridge.exposeInMainWorld('notify', {
   send: (data) => ipcRenderer.invoke('notify:send', data),
   onNavigateRelease: (callback) => {
-    ipcRenderer.on('navigate:release', (_, releaseId) => callback(releaseId));
+    const handler = (_, releaseId) => callback(releaseId);
+    ipcRenderer.on('navigate:release', handler);
+    return () => ipcRenderer.removeListener('navigate:release', handler);
   }
 });
 
 contextBridge.exposeInMainWorld('debugApi', {
   onLog: (callback) => {
-    ipcRenderer.on('debug:log', (_, log) => callback(log));
+    const handler = (_, log) => callback(log);
+    ipcRenderer.on('debug:log', handler);
+    return () => ipcRenderer.removeListener('debug:log', handler);
   },
   sendLog: (type, message, data) => ipcRenderer.invoke('debug:send', { type, message, data })
+});
+
+contextBridge.exposeInMainWorld('shikimoriAuth', {
+  exchangeCode: (authCode, domain) =>
+    ipcRenderer.invoke('shikimori:exchangeCode', { authCode, domain }),
 });
 
 contextBridge.exposeInMainWorld('discordRPC', {

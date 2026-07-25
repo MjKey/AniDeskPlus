@@ -1,4 +1,5 @@
 <script>
+    import { Pages } from "./pages.js";
     import TitleBar from "./components/gui/TitleBar.svelte";
     import LeftMenu from "./components/gui/LeftMenu.svelte";
     import HomePage from "./pages/Home.svelte";
@@ -40,6 +41,7 @@
     let utoken;
 
     let isFullscreen = false;
+    let availableGPU = false;
 
     const user_token = localStorageWritable("user_token", null);
     user_token.subscribe((value) => (utoken = JSON.parse(value)));
@@ -101,9 +103,9 @@
         socials: null,
         login: null,
     };
-    window.avaliableGPU = utils
+    window.availableGPU = utils
         .checkGPUSupport()
-        .then((res) => (avaliableGPU = res));
+        .then((res) => (availableGPU = res));
 
     if (utoken) {
         anixApi.settings
@@ -190,16 +192,27 @@
     let intervalBookmarkCheck;
 
     let isDebug = false;
+    let unsubNavigate = null;
+    let unsubFullscreen = null;
 
     onMount(async () => {
         if (window.prc?.isDebug) {
             isDebug = await window.prc.isDebug();
         }
 
+        if (window.elecWindow?.isFullScreen) {
+            isFullscreen = await window.elecWindow.isFullScreen();
+        }
+        if (window.elecWindow?.onFullscreenChange) {
+            unsubFullscreen = window.elecWindow.onFullscreenChange((isFs) => {
+                isFullscreen = isFs;
+            });
+        }
+
         if (window.notify?.onNavigateRelease) {
-            window.notify.onNavigateRelease((releaseId) => {
+            unsubNavigate = window.notify.onNavigateRelease((releaseId) => {
                 if (window.updateViewportComponent) {
-                    window.updateViewportComponent(8, { id: releaseId });
+                    window.updateViewportComponent(Pages.RELEASE, { id: releaseId });
                 }
             });
         }
@@ -218,6 +231,8 @@
     });
 
     onDestroy(() => {
+        if (unsubNavigate) unsubNavigate();
+        if (unsubFullscreen) unsubFullscreen();
         if (intervalNotifications) clearInterval(intervalNotifications);
         if (intervalBookmarkCheck) clearInterval(intervalBookmarkCheck);
     });
@@ -239,10 +254,6 @@
     window.setViewportScrollEvent = (callback) => {
         scrollEvent = callback;
     };
-
-    window.addEventListener("resize", function handleResize(event) {
-        isFullscreen = window.innerHeight === screen.height;
-    });
 </script>
 
 <main>

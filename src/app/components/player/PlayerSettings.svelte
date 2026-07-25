@@ -1,4 +1,5 @@
 <script>
+    import { onMount } from "svelte";
     import utils from "../../utils";
     import SliderButton from "../buttons/SliderButton.svelte";
     import { fly } from "svelte/transition";
@@ -19,6 +20,13 @@
 
     let upscaleSettings;
     let playerSettings = utils.playerDefaultSettings;
+    let availableGPU = false;
+
+    onMount(() => {
+        if (window.availableGPU) {
+            window.availableGPU.then(res => availableGPU = res);
+        }
+    });
 
     playerSettingsStore.subscribe((value) => {
         playerSettings = {
@@ -71,11 +79,11 @@
                     <span class="btn-title">Качество:</span>
                     <span>{currentSettings.currentQuality}p →</span>
                 </button>
-                <div class="player-settings-element" class:disabled={!upscaleSettings.enabled || !avaliableGPU}>
+                <div class="player-settings-element" class:disabled={!upscaleSettings.enabled || !availableGPU}>
                     <span class="btn-title">Улучшение качества:</span>
                     <SliderButton
-                        disabled={!upscaleSettings.enabled || !avaliableGPU}
-                        value={!avaliableGPU ? false : currentSettings.upscaleEnabled}
+                        disabled={!upscaleSettings.enabled || !availableGPU}
+                        value={!availableGPU ? false : currentSettings.upscaleEnabled}
                         onClickCallback={(value) => changeUpscale(value)}
                     />
                 </div>
@@ -150,7 +158,7 @@
                 >
                     ← Назад
                 </button>
-                {#each Object.keys(currentSettings.avaliableQuality).reverse() as option}
+                {#each Object.keys(currentSettings.availableQuality || {}).reverse() as option}
                     <button
                         class="player-settings-element"
                         onclick={() => {

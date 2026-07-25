@@ -1,4 +1,5 @@
 <script>
+    import { Pages } from "../pages.js";
     import { onMount, onDestroy, createEventDispatcher } from "svelte";
     import Icon from "../components/elements/Icon.svelte";
     import CloseIcon from "../icons/close.svg";
@@ -48,15 +49,15 @@
     function notificationClick(e, notification) {
         switch (notification.type) {
             case "myCollection":
-                updateViewportComponent(12, {
+                updateViewportComponent(Pages.COLLECTION, {
                     id: notification.collection_comment.collection.id,
                 });
                 break;
             case "relatedRelease":
-                updateViewportComponent(8, { id: notification.release.id });
+                updateViewportComponent(Pages.RELEASE, { id: notification.release.id });
                 break;
             case "friend":
-                updateViewportComponent(9, notification.by_profile.id);
+                updateViewportComponent(Pages.PROFILE, notification.by_profile.id);
                 break;
         }
 
@@ -110,7 +111,7 @@
             </div>
         {:else}
             {#each n.content
-                .filter((x) => utils.avaliableNotifications.includes(x.type))
+                .filter((x) => utils.availableNotifications.includes(x.type))
                 .sort((a, b) => b.timestamp - a.timestamp) as notification}
                 <button
                     class="notification flex-row"

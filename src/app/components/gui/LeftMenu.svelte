@@ -20,12 +20,12 @@
     import SettingsIcon from "../../icons/settings.svg";
     import Settings from "../../pages/Settings.svelte";
     import Friends from "../../pages/Friends.svelte";
-    import NotAvaliable from "../../pages/NotAvaliable.svelte";
+    import NotAvailable from "../../pages/NotAvailable.svelte";
     import CollectionIcon from "../../icons/collection.svg";
     import CollectionList from "../../pages/CollectionList.svelte";
     import Collection from "../../pages/Collection.svelte";
     import Notifications from "../../pages/Notifications.svelte";
-    import NotifiactionAvaliable from "../../icons/notificationAvaliable.svg";
+    import NotificationAvailable from "../../icons/notificationAvailable.svg";
     import { notificationCount } from "../stores/notificationCount";
 
     export const views = [
@@ -35,7 +35,7 @@
         CollectionList,
         Discover,
         Search,
-        NotAvaliable,
+        NotAvailable,
         Settings,
         Release,
         Profile,
@@ -168,7 +168,7 @@
     </div>
     <div class="bottom-menu-content">
         <LeftMenuButton
-            icon={nCount > 0 ? NotifiactionAvaliable : NotificationIcon}
+            icon={nCount > 0 ? NotificationAvailable : NotificationIcon}
             modalComponent={Notifications}
             type="modal"
         />

@@ -1,4 +1,5 @@
 <script>
+    import { Pages } from "../../pages.js";
     import Icon from "./Icon.svelte";
     import BookmarkIcon from "../../icons/bookmark.svg";
     import CommentIcon from "../../icons/comment.svg";
@@ -7,7 +8,7 @@
     export let collection;
 </script>
 
-<collection-full-row-card class="flex-row" onclick={() => updateViewportComponent(12, { id: collection.id })}>
+<collection-full-row-card class="flex-row" onclick={() => updateViewportComponent(Pages.COLLECTION, { id: collection.id })}>
     <div class="full-row-collection-poster">
         <img src={collection.image} alt="CollectionPoster" class="collection-poster">
     </div>

@@ -1,4 +1,5 @@
 <script>
+    import { Pages } from "../pages.js";
     import Preloader from "../components/gui/Preloader.svelte";
     import AnimePoster from "../components/release/AnimePoster.svelte";
     import AnimeFullRowCard from "../components/elements/AnimeFullRowCard.svelte";
@@ -61,7 +62,7 @@
     }
 
     function interestingItemClick(r) {
-        updateViewportComponent(8, { id: Number(r.action) });
+        updateViewportComponent(Pages.RELEASE, { id: Number(r.action) });
     }
 </script>
 

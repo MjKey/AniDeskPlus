@@ -1,4 +1,5 @@
 <script>
+    import { Pages } from "../pages.js";
     import { localStorageWritable } from "@babichjacob/svelte-localstorage";
     import Preloader from "../components/gui/Preloader.svelte";
     import ProfileAvatar from "../components/profile/ProfileAvatar.svelte";
@@ -90,7 +91,7 @@
 
 {#snippet friendCard(f, raw, type = "friend")}
     <button
-        onclick={() => updateViewportComponent(9, f.profile.id)}
+        onclick={() => updateViewportComponent(Pages.PROFILE, f.profile.id)}
         class="friend flex-row"
         class:card-background={f.blog.channel?.cover}
         style="--background-image: url({f.blog.channel?.cover})"

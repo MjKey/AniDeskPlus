@@ -1,11 +1,13 @@
+import defaultAppSettings from '../shared/defaultSettings.json';
+
 /**
  * Набор всяких вспомогательных функций
  */
 
-module.exports = {
+export default {
     seasons: [null, "Зима", "Весна", "Лето", "Осень"],
 
-    avaliableNotifications: [
+    availableNotifications: [
         "myCollection",
         "relatedRelease",
         "friend",
@@ -43,14 +45,7 @@ module.exports = {
         releaseCardType: "full-row",
     },
 
-    appDefaultSettings: {
-        AutoUpdate: true,
-        EnableRPC: false,
-        EnableDevTools: false,
-        MinimizeToTray: true,
-        EnableEpisodeNotifications: true,
-        PreferredDubber: ""
-    },
+    appDefaultSettings: defaultAppSettings,
 
     playingDefaultSettings: {
         defaultQuality: 1080,

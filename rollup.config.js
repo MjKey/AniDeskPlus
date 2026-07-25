@@ -4,6 +4,7 @@ import resolve from '@rollup/plugin-node-resolve';
 import livereload from 'rollup-plugin-livereload';
 import terser from '@rollup/plugin-terser';
 import css from 'rollup-plugin-css-only';
+import json from '@rollup/plugin-json';
 import { spawn } from 'child_process';
 import { string } from 'rollup-plugin-string';
 import svgo from 'rollup-plugin-svgo';
@@ -44,8 +45,7 @@ function envPlugin() {
         transform(code, id) {
             if (!id.includes('node_modules')) {
                 let replaced = code
-                    .replace(/__ENV_SHIKIMORI_CLIENT_ID__/g, JSON.stringify(envVars.SHIKIMORI_CLIENT_ID || 'NeE3caFFa6Q-JLg0rAVxGTcsGwy12Btc2zYNuGolybY'))
-                    .replace(/__ENV_SHIKIMORI_CLIENT_SECRET__/g, JSON.stringify(envVars.SHIKIMORI_CLIENT_SECRET || 'IbwfA65ellkh_R08CY_x4Dp_A7hTCIYtYHkFxHWQP08'));
+                    .replace(/__ENV_SHIKIMORI_CLIENT_ID__/g, JSON.stringify(envVars.SHIKIMORI_CLIENT_ID || ''));
                 return { code: replaced, map: null };
             }
         }
@@ -101,6 +101,7 @@ export default {
             include: 'src/icons/*.svg',
         }),
         css({ output: 'bundle.css' }),
+        json(),
         commonjs(),
         !production && serve(),
         !production && livereload('public'),

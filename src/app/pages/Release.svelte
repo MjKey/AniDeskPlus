@@ -2,6 +2,7 @@
     import LeftReleaseBaseButton from "../components/buttons/LeftReleaseBaseButton.svelte";
     import Preloader from "../components/gui/Preloader.svelte";
     import RatingGraph from "../components/release/RatingGraph.svelte";
+    import RatingStars from "../components/release/RatingStars.svelte";
     import BookmarkTypes from "../components/elements/BookmarkTypes.svelte";
     import CommentItem from "../components/elements/CommentItem.svelte";
     import AgeRate from "../components/release/AgeRate.svelte";
@@ -22,7 +23,7 @@
     import PlayIcon from "../icons/play.svg";
     import BookmarkStatsInfo from "../components/profile/BookmarkStatsInfo.svelte";
     import AuthPlaceholder from "./AuthPlaceholder.svelte";
-    import NotAvaliable from "./NotAvaliable.svelte";
+    import NotAvailable from "./NotAvailable.svelte";
     import { onDestroy } from "svelte";
 
     export let args;
@@ -50,7 +51,7 @@
         showCommentsModal,
         showRelatedReleasesModal = false,
         showAuthModal = false,
-        showNotAvaliableModal = false;
+        showNotAvailableModal = false;
     let modalSubTitle = null;
 
     let isFavorite = false;
@@ -178,19 +179,38 @@
                 </LeftReleaseBaseButton>
 
                 {#if r.release.status?.id !== 3}
-                    <div class="rating-container flex-row">
-                        <div class="rate-text">
-                            <span class="rating-text">Рейтинг</span>
-                            <span class="rate"
-                                >{r.release.grade.toFixed(2)}</span
-                            >
-                            <div class="rate-vote-text">
-                                <span class="rating-votes"
-                                    >{r.release.vote_count}</span
-                                > голосов
+                    <div class="rating-container flex-column">
+                        <div class="flex-row" style="width: 100%; justify-content: space-between; align-items: center;">
+                            <div class="rate-text">
+                                <span class="rating-text">Рейтинг</span>
+                                <span class="rate">{r.release.grade.toFixed(2)}</span>
+                                <div class="rate-vote-text">
+                                    <span class="rating-votes">{r.release.vote_count}</span> голосов
+                                </div>
                             </div>
+                            <RatingGraph release={r.release} />
                         </div>
-                        <RatingGraph release={r.release} />
+                        <RatingStars
+                            releaseId={r.release.id}
+                            myVote={r.release.vote || r.release.my_vote || 0}
+                            on:showAuthModal={() => updateViewportComponent(AuthPlaceholder)}
+                            on:voteChange={(e) => {
+                                const newVote = e.detail.vote;
+                                r.release.vote = newVote;
+                                r.release.my_vote = newVote;
+                                anixApi.release.info(r.release.id, false).then((fresh) => {
+                                    if (fresh && fresh.release) {
+                                        r.release.grade = fresh.release.grade;
+                                        r.release.vote_count = fresh.release.vote_count;
+                                        r.release.vote_1_count = fresh.release.vote_1_count;
+                                        r.release.vote_2_count = fresh.release.vote_2_count;
+                                        r.release.vote_3_count = fresh.release.vote_3_count;
+                                        r.release.vote_4_count = fresh.release.vote_4_count;
+                                        r.release.vote_5_count = fresh.release.vote_5_count;
+                                    }
+                                });
+                            }}
+                        />
                     </div>
                 {/if}
                 <div class="bookmarks-bar-container">
@@ -263,8 +283,8 @@
                         <CommentItem
                             {comment}
                             on:showAuthModal={() => (showAuthModal = true)}
-                            on:notAvaliable={() =>
-                                (showNotAvaliableModal = true)}
+                            on:notAvailable={() =>
+                                (showNotAvailableModal = true)}
                         />
                     {/each}
                     <ViewAllButton
@@ -308,11 +328,11 @@
         />
 
         <BaseModal
-            modalComponent={NotAvaliable}
-            showed={showNotAvaliableModal}
+            modalComponent={NotAvailable}
+            showed={showNotAvailableModal}
             bind:modalTitle={modalSubTitle}
             modalSize={{ width: "60%", height: "70%" }}
-            on:closeModal={() => (showNotAvaliableModal = false)}
+            on:closeModal={() => (showNotAvailableModal = false)}
         />
     {/if}
 {/await}

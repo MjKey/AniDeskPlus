@@ -1,4 +1,5 @@
 <script>
+    import { Pages } from '../pages.js';
     import { Lottie } from 'lottie-svelte'
     import BaseMainButton from '../components/buttons/BaseMainButton.svelte';
 </script>
@@ -12,7 +13,7 @@
             <span class="title">Данный фунцкионал доступен только авторизованным пользователям</span>
             <span class="bottom">Пожалуйста, авторизуйтесь для использования данного функционала</span>
         </div>
-        <BaseMainButton style="primary" width="60%" borderRadius={6} onClickCallback={() => {updateViewportComponent(10)}}>Авторизоваться</BaseMainButton>
+        <BaseMainButton style="primary" width="60%" borderRadius={6} onClickCallback={() => {updateViewportComponent(Pages.LOGIN)}}>Авторизоваться</BaseMainButton>
     </div>
 </div>
 

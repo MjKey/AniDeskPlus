@@ -29,39 +29,50 @@ const feed = `${server}/MjKey/AniDeskPlus/${process.platform}-${process.arch}/${
 const UserAgent = "AnixartApp/9.0 BETA 3-25021818 (Android 9; SDK 28; x86_64; ROG ASUS AI2201_B; ru)";
 const rpcClientId = '1372649290438148137';
 const SettingsPath = path.join(app.getPath("userData"), "settings.json");
-const DefaultSettings = {
-  AutoUpdate: true,
-  EnableRPC: false,
-  EnableDevTools: false,
-  MinimizeToTray: true,
-  EnableEpisodeNotifications: true,
-  PreferredDubber: ""
-};
+const DefaultSettings = require('./shared/defaultSettings.json');
 
-// Memory & performance optimization switches
-app.commandLine.appendSwitch('js-flags', '--max-old-space-size=512');
+class SettingsManager {
+  constructor(filePath, defaults) {
+    this.filePath = filePath;
+    this.defaults = defaults;
+    this._cache = null;
+  }
 
-// Linux WebGPU/ANGLE fallback
-if (process.platform === 'linux') {
-  app.commandLine.appendSwitch('use-gl', 'angle');
-  app.commandLine.appendSwitch('use-angle', 'vulkan');
-  app.commandLine.appendSwitch(
-    'enable-features',
-    'Vulkan,VulkanFromANGLE,DefaultANGLEVulkan',
-  );
-  app.commandLine.appendSwitch('enable-unsafe-webgpu');
+  _load() {
+    if (this._cache) return this._cache;
+    try {
+      if (fs.existsSync(this.filePath)) {
+        this._cache = JSON.parse(fs.readFileSync(this.filePath, 'utf-8'));
+      } else {
+        this._cache = { ...this.defaults };
+      }
+    } catch (e) {
+      console.error('Settings load error:', e);
+      this._cache = { ...this.defaults };
+    }
+    return this._cache;
+  }
+
+  get(key) {
+    const settings = this._load();
+    return settings?.[key] ?? this.defaults?.[key] ?? null;
+  }
+
+  set(key, value) {
+    const settings = this._load();
+    settings[key] = value;
+    this._cache = settings;
+    fs.promises.writeFile(this.filePath, JSON.stringify(settings, null, 2))
+      .catch(e => console.error('Settings write error:', e));
+  }
+
+  getAll() {
+    return { ...this.defaults, ...this._load() };
+  }
 }
 
-const discordRpcClient = new rpc.Client({
-  clientId: rpcClientId,
-  transport: 'ipc'
-});
-
-discordRpcClient.on('ready', () => {
-  if (isDebugMode) console.log("[DEBUG] [RPC] Hooked!");
-});
-
-const SettingsFirst = fs.existsSync(SettingsPath) ? JSON.parse(fs.readFileSync(SettingsPath)) : DefaultSettings;
+const settingsManager = new SettingsManager(SettingsPath, DefaultSettings);
+const SettingsFirst = settingsManager.getAll();
 
 if (app.isPackaged && SettingsFirst.AutoUpdate) {
   autoUpdater.on("checking-for-update", () => {
@@ -277,8 +288,7 @@ function createWindow() {
   }
 
   mainWindow.on('close', function (event) {
-    const settings = fs.existsSync(SettingsPath) ? JSON.parse(fs.readFileSync(SettingsPath)) : DefaultSettings;
-    const minimizeToTray = settings.MinimizeToTray ?? DefaultSettings.MinimizeToTray;
+    const minimizeToTray = settingsManager.get('MinimizeToTray');
 
     if (!isQuitting && minimizeToTray) {
       event.preventDefault();
@@ -286,6 +296,14 @@ function createWindow() {
     } else {
       mainWindow = null;
     }
+  });
+
+  mainWindow.on('enter-full-screen', () => {
+    mainWindow.webContents.send('fullscreen:changed', true);
+  });
+
+  mainWindow.on('leave-full-screen', () => {
+    mainWindow.webContents.send('fullscreen:changed', false);
   });
 
   mainWindow.once('ready-to-show', async () => {
@@ -378,21 +396,13 @@ ipcMain.handle("app:quit", () => {
   app.quit();
 });
 
-ipcMain.handle("settings:get", (_, key) => {
-  const settings = fs.existsSync(SettingsPath) ? JSON.parse(fs.readFileSync(SettingsPath)) : DefaultSettings;
-  return settings?.[key] ?? DefaultSettings?.[key] ?? null;
-});
+ipcMain.handle("settings:get", (_, key) => settingsManager.get(key));
 
 ipcMain.handle("settings:set", (_, key, value) => {
-  const settings = fs.existsSync(SettingsPath) ? JSON.parse(fs.readFileSync(SettingsPath)) : DefaultSettings;
-  settings[key] = value;
-  fs.writeFileSync(SettingsPath, JSON.stringify(settings, null, 2));
+  settingsManager.set(key, value);
 });
 
-ipcMain.handle("settings:getAll", (_) => {
-  const settings = fs.existsSync(SettingsPath) ? JSON.parse(fs.readFileSync(SettingsPath)) : DefaultSettings;
-  return { ...DefaultSettings, ...settings };
-});
+ipcMain.handle("settings:getAll", (_) => settingsManager.getAll());
 
 ipcMain.handle("window:minimize", (_) => {
   mainWindow.minimize();
@@ -407,8 +417,7 @@ ipcMain.handle("window:maximize", (_) => {
 });
 
 ipcMain.handle("window:close", (_) => {
-  const settings = fs.existsSync(SettingsPath) ? JSON.parse(fs.readFileSync(SettingsPath)) : DefaultSettings;
-  const minimizeToTray = settings.MinimizeToTray ?? DefaultSettings.MinimizeToTray;
+  const minimizeToTray = settingsManager.get('MinimizeToTray');
 
   if (!isQuitting && minimizeToTray && mainWindow) {
     mainWindow.hide();
@@ -419,6 +428,10 @@ ipcMain.handle("window:close", (_) => {
 
 ipcMain.handle("window:getSize", (_) => {
   return mainWindow ? mainWindow.getSize() : [1280, 720];
+});
+
+ipcMain.handle("window:isFullScreen", (_) => {
+  return mainWindow ? mainWindow.isFullScreen() : false;
 });
 
 ipcMain.handle("window:enterFullScreen", (_) => {
@@ -531,4 +544,33 @@ ipcMain.handle("updater:check", async (_) => {
 
 ipcMain.handle("debug:send", (_, { type, message, data }) => {
   sendDebugLog(type, message, data);
+});
+
+ipcMain.handle("shikimori:exchangeCode", async (_, { authCode, domain }) => {
+  if (!authCode) return null;
+
+  const SHIKI_CLIENT_ID = process.env.SHIKIMORI_CLIENT_ID || '';
+  const SHIKI_CLIENT_SECRET = process.env.SHIKIMORI_CLIENT_SECRET || '';
+  const SHIKI_REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob";
+
+  try {
+    const tokenUrl = `https://${domain || 'shikimori.io'}/oauth/token`;
+    const res = await net.fetch(tokenUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        grant_type: "authorization_code",
+        client_id: SHIKI_CLIENT_ID,
+        client_secret: SHIKI_CLIENT_SECRET,
+        code: authCode.trim(),
+        redirect_uri: SHIKI_REDIRECT_URI
+      })
+    });
+
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) {
+    console.error("Shikimori OAuth error:", e);
+    return null;
+  }
 });

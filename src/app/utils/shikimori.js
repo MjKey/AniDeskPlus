@@ -6,7 +6,6 @@
 const USER_AGENT = "AniDeskPlusApp/1.0 (Desktop; Windows)";
 
 export const SHIKI_CLIENT_ID = __ENV_SHIKIMORI_CLIENT_ID__;
-export const SHIKI_CLIENT_SECRET = __ENV_SHIKIMORI_CLIENT_SECRET__;
 export const SHIKI_REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob";
 
 export const ShikimoriDomains = [
@@ -33,43 +32,16 @@ function getShikimoriGraphQlUrl() {
     return `https://${getShikimoriDomain()}/api/graphql`;
 }
 
-function getShikimoriOAuthTokenUrl() {
-    return `https://${getShikimoriDomain()}/oauth/token`;
-}
-
 export function getShikimoriAuthUrl() {
     return `https://${getShikimoriDomain()}/oauth/authorize?client_id=${SHIKI_CLIENT_ID}&redirect_uri=${encodeURIComponent(SHIKI_REDIRECT_URI)}&response_type=code&scope=user_rates`;
 }
 
 export async function exchangeShikimoriCode(authCode) {
     if (!authCode) return null;
-    try {
-        const res = await fetch(getShikimoriOAuthTokenUrl(), {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "User-Agent": USER_AGENT
-            },
-            body: JSON.stringify({
-                grant_type: "authorization_code",
-                client_id: SHIKI_CLIENT_ID,
-                client_secret: SHIKI_CLIENT_SECRET,
-                code: authCode.trim(),
-                redirect_uri: SHIKI_REDIRECT_URI
-            })
-        });
-
-        if (!res.ok) {
-            console.error("[Shikimori OAuth] Token exchange failed:", res.status);
-            return null;
-        }
-
-        const data = await res.json();
-        return data; // { access_token, refresh_token, token_type, scope, created_at }
-    } catch (e) {
-        console.error("[Shikimori OAuth] Exchange error:", e);
-        return null;
+    if (window.shikimoriAuth?.exchangeCode) {
+        return window.shikimoriAuth.exchangeCode(authCode, getShikimoriDomain());
     }
+    return null;
 }
 
 function getCache(key) {

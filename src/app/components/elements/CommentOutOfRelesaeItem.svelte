@@ -1,4 +1,5 @@
 <script>
+    import { Pages } from "../../pages.js";
     export let comment;
     export let release;
     import { Lottie } from "lottie-svelte";
@@ -7,14 +8,14 @@
 <button
     class="comment flex-column"
     onclick={() =>
-        updateViewportComponent(8, {
+        updateViewportComponent(Pages.RELEASE, {
             id: release != null ? release?.id : comment.release.id,
         })}
 >
     <div class="comment-author flex-row" onclick={(e) => e.stopPropagation()}>
         <div
             class="comment-author-image"
-            onclick={() => updateViewportComponent(9, comment.profile.id)}
+            onclick={() => updateViewportComponent(Pages.PROFILE, comment.profile.id)}
         >
             <img
                 height="40"
@@ -29,7 +30,7 @@
                     <div
                         class="comment-author-username flex-row"
                         onclick={() =>
-                            updateViewportComponent(9, comment.profile.id)}
+                            updateViewportComponent(Pages.PROFILE, comment.profile.id)}
                     >
                         {comment.profile.login}
                         {#if comment.profile.badge_url}

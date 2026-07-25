@@ -1,4 +1,5 @@
 <script>
+    import { onMount } from "svelte";
     import BaseAltButton from "../components/buttons/BaseAltButton.svelte";
     import BaseMainButton from "../components/buttons/BaseMainButton.svelte";
     import Separator from "../components/elements/Separator.svelte";
@@ -13,6 +14,13 @@
     import { localStorageWritable } from "@babichjacob/svelte-localstorage";
 
     let upscaleSettings;
+    let availableGPU = false;
+
+    onMount(() => {
+        if (window.availableGPU) {
+            window.availableGPU.then(res => availableGPU = res);
+        }
+    });
 
     const upscaleSettingsRaw = localStorageWritable("upscaleSettings", utils.upscaleDefaultSettings);
 
@@ -29,7 +37,7 @@
 </script>
 
 <div class="flex-column upscale-settings">
-    {#if !avaliableGPU}
+    {#if !availableGPU}
         <InfoElement
             title="Улучшение качества недоступно на вашем устройстве"
             description="Ваша видеокарта не поддерживает улучшение качества из-за отсутствия поддержки WebGPU. Это может быть связано с устаревшими драйверами или аппаратными ограничениями. Попробуйте обновить драйвер видеокарты, либо использовать другое устройство."
@@ -46,8 +54,8 @@
     <CheckboxElement
         title="Включить улучшение качества"
         description="Активирует улучшение качества через GPU с использованием технологий WebGPU и Anime4K. Повышает чёткость и качество изображения."
-        disabled={!avaliableGPU}
-        value={upscaleSettings.enabled && avaliableGPU}
+        disabled={!availableGPU}
+        value={upscaleSettings.enabled && availableGPU}
         onChangeCallback={(e) => {
             updateKey("enabled", e);
         }}
@@ -60,7 +68,7 @@
         values={utils.upscaleValues}
         value={upscaleSettings.mode}
         placeholder="Выберите режим"
-        disabled={!avaliableGPU || !upscaleSettings.enabled}
+        disabled={!availableGPU || !upscaleSettings.enabled}
         onChangeCallback={(e, v) => updateKey("mode", v)}
     />
 

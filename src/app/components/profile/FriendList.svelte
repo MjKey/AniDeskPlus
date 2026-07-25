@@ -1,4 +1,5 @@
 <script>
+    import { Pages } from "../../pages.js";
     import { Lottie } from "lottie-svelte";
     import ProfileAvatar from "./ProfileAvatar.svelte";
 
@@ -7,7 +8,7 @@
 
 <div class="profile-friends-list">
     {#each friendsInfo.content.slice(0, 5) as friend}
-    <button class="friend-profile" on:click={() => updateViewportComponent(9, friend.id)}>
+    <button class="friend-profile" on:click={() => updateViewportComponent(Pages.PROFILE, friend.id)}>
         <ProfileAvatar src={friend.avatar} alt={friend.login} size={{width: 120, height: 120}} isOnline={friend.is_online}/>
         <div class="friend-profile-info">
             <div class="friend-profile-username">{friend.login}

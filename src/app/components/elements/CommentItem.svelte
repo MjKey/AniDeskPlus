@@ -3,15 +3,36 @@
     import { Lottie } from "lottie-svelte";
     import BaseMainButton from "../buttons/BaseMainButton.svelte";
     import Icon from "./Icon.svelte";
+    import { Pages } from "../../pages.js";
     import upVoteIcon from "../../icons/upVote.svg";
     import downVoteIcon from "../../icons/downVote.svg";
     import ProfileAvatar from "../profile/ProfileAvatar.svelte";
     import { createEventDispatcher } from "svelte";
+    import { localStorageWritable } from "@babichjacob/svelte-localstorage";
+
     const dispatch = createEventDispatcher();
 
     let showedReply = false,
         spoilerView = false;
     let replies = [];
+
+    let isEditing = false;
+    let editMessage = comment.message;
+    let editSpoiler = comment.is_spoiler;
+    let isSaving = false;
+
+    let currentUserId = null;
+    const userToken = localStorageWritable("user_token", null);
+    userToken.subscribe((val) => {
+        if (val) {
+            try {
+                const parsed = JSON.parse(val);
+                currentUserId = parsed?.id;
+            } catch (e) {}
+        }
+    });
+
+    $: isMyComment = currentUserId && comment.profile && comment.profile.id === currentUserId;
 
     async function getAllReplies() {
         let totalPages = 1;
@@ -41,7 +62,6 @@
         const prevVote = comment.vote;
         const prevLikes = comment.likes_count;
 
-        //(comment.vote == 0 ? vote == 2 ? 1 : -1 : comment.vote != vote && vote == 2 ? 2 : comment.vote == vote ? vote == 2 ? -1 : 1 : -2)
         comment.likes_count =
             comment.likes_count +
             (comment.vote == 0
@@ -63,13 +83,42 @@
             comment.likes_count = prevLikes;
         }
     }
+
+    async function saveEdit() {
+        if (!editMessage.trim()) return;
+        isSaving = true;
+        try {
+            const res = await anixApi.release.editComment(comment.id, editMessage.trim(), editSpoiler);
+            if (res.code === 0) {
+                comment.message = editMessage.trim();
+                comment.is_spoiler = editSpoiler;
+                isEditing = false;
+            }
+        } catch (e) {
+            console.error("Failed to edit comment:", e);
+        } finally {
+            isSaving = false;
+        }
+    }
+
+    async function handleDelete() {
+        if (!confirm("Вы уверены, что хотите удалить этот комментарий?")) return;
+        try {
+            const res = await anixApi.release.removeComment(comment.id);
+            if (res.code === 0) {
+                dispatch("deleteComment", comment.id);
+            }
+        } catch (e) {
+            console.error("Failed to delete comment:", e);
+        }
+    }
 </script>
 
 <div class="comment flex-column">
     <div class="comment-author flex-row">
         <div
             class="comment-author-image"
-            onclick={() => updateViewportComponent(9, comment.profile.id)}
+            onclick={() => updateViewportComponent(Pages.PROFILE, comment.profile.id)}
         >
             <ProfileAvatar
                 src={comment.profile.avatar}
@@ -80,7 +129,7 @@
         <div class="comment-author-info flex-row">
             <div
                 class="comment-author-username flex-row"
-                onclick={() => updateViewportComponent(9, comment.profile.id)}
+                onclick={() => updateViewportComponent(Pages.PROFILE, comment.profile.id)}
             >
                 {comment.profile.login}
                 {#if comment.profile.badge_url}
@@ -118,13 +167,25 @@
                 borderRadius={6}
                 height={25}
                 onClickCallback={() => {
-                    dispatch("notAvaliable");
+                    if (anixApi.client.token) {
+                        dispatch("reply", comment);
+                    } else {
+                        dispatch("showAuthModal");
+                    }
                 }}
                 ><img
                     src="assets/icons/reply.svg"
                     alt="reply"
                 /></BaseMainButton
             >
+            {#if isMyComment}
+                <button class="comment-action-btn" onclick={() => (isEditing = !isEditing)} title="Редактировать">
+                    ✏️
+                </button>
+                <button class="comment-action-btn delete" onclick={handleDelete} title="Удалить">
+                    🗑️
+                </button>
+            {/if}
         </div>
     </div>
     <div class="comment-message flex-row">
@@ -172,27 +233,42 @@
             </button>
         </div>
         <div class="comment-msg flex-column">
-            <div class="comment-text flex-row">
-                {#if comment.is_spoiler && !spoilerView}
-                    <button
-                        class="comment-spoiler flex-column"
-                        onclick={() => (spoilerView = !spoilerView)}
-                    >
-                        <div class="spoiler-text flex-column">
-                            <span>Данный комментарий содержит спойлер</span>
-                            <span class="spoiler-subtitle"
-                                >Для того чтобы посмотреть комментарий, нажмите
-                                здесь</span
-                            >
+            {#if isEditing}
+                <div class="comment-edit-box flex-column">
+                    <textarea bind:value={editMessage} class="comment-edit-textarea"></textarea>
+                    <div class="comment-edit-controls flex-row">
+                        <label class="spoiler-checkbox">
+                            <input type="checkbox" bind:checked={editSpoiler} /> Спойлер
+                        </label>
+                        <div class="flex-row" style="gap: 8px; margin-left: auto;">
+                            <button class="btn-cancel" onclick={() => (isEditing = false)}>Отмена</button>
+                            <button class="btn-save" disabled={isSaving} onclick={saveEdit}>Сохранить</button>
                         </div>
-                    </button>
-                {/if}
-                <span
-                    class="message-text"
-                    class:spoiler-blur={comment.is_spoiler && !spoilerView}
-                    >{comment.message}</span
-                >
-            </div>
+                    </div>
+                </div>
+            {:else}
+                <div class="comment-text flex-row">
+                    {#if comment.is_spoiler && !spoilerView}
+                        <button
+                            class="comment-spoiler flex-column"
+                            onclick={() => (spoilerView = !spoilerView)}
+                        >
+                            <div class="spoiler-text flex-column">
+                                <span>Данный комментарий содержит спойлер</span>
+                                <span class="spoiler-subtitle"
+                                    >Для того чтобы посмотреть комментарий, нажмите
+                                    здесь</span
+                                >
+                            </div>
+                        </button>
+                    {/if}
+                    <span
+                        class="message-text"
+                        class:spoiler-blur={comment.is_spoiler && !spoilerView}
+                        >{comment.message}</span
+                    >
+                </div>
+            {/if}
             {#if comment.reply_count > 0}
                 <button
                     class="comment-reply-count"
@@ -213,7 +289,15 @@
             {#if showedReply && replies.length > 0}
                 <div class="comment-replies flex-column">
                     {#each replies as reply}
-                        <svelte:self comment={reply}></svelte:self>
+                        <svelte:self
+                            comment={reply}
+                            on:reply={(e) => dispatch("reply", e.detail)}
+                            on:deleteComment={(e) => {
+                                replies = replies.filter((r) => r.id !== e.detail);
+                                comment.reply_count = Math.max(0, comment.reply_count - 1);
+                            }}
+                            on:showAuthModal={() => dispatch("showAuthModal")}
+                        ></svelte:self>
                     {/each}
                 </div>
             {/if}
@@ -354,5 +438,82 @@
         font-size: 12px;
         color: var(--secondary-text-color);
         margin-left: 10px;
+    }
+
+    .comment-action-btn {
+        background: transparent;
+        border: none;
+        font-size: 14px;
+        cursor: pointer;
+        margin-left: 6px;
+        padding: 2px 4px;
+        border-radius: 4px;
+        opacity: 0.7;
+        transition: opacity 0.2s ease;
+    }
+
+    .comment-action-btn:hover {
+        opacity: 1;
+    }
+
+    .comment-edit-box {
+        width: 100%;
+        margin-top: 6px;
+        background-color: var(--alt-background-color);
+        padding: 8px;
+        border-radius: 8px;
+        border: 1px solid var(--rate-back-color);
+    }
+
+    .comment-edit-textarea {
+        width: 100%;
+        min-height: 60px;
+        background-color: var(--background-color);
+        color: var(--main-text-color);
+        border: 1px solid var(--rate-back-color);
+        border-radius: 6px;
+        padding: 8px;
+        font-size: 14px;
+        resize: vertical;
+        outline: none;
+        box-sizing: border-box;
+    }
+
+    .comment-edit-controls {
+        margin-top: 8px;
+        align-items: center;
+    }
+
+    .spoiler-checkbox {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--secondary-text-color);
+        cursor: pointer;
+    }
+
+    .btn-save {
+        background-color: var(--main-color, #e50914);
+        color: #fff;
+        border: none;
+        padding: 6px 14px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    .btn-cancel {
+        background: transparent;
+        color: var(--secondary-text-color);
+        border: none;
+        padding: 6px 10px;
+        font-size: 13px;
+        cursor: pointer;
+    }
+
+    .btn-cancel:hover {
+        color: var(--main-text-color);
     }
 </style>

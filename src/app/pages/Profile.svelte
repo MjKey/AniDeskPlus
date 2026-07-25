@@ -1,4 +1,5 @@
 <script>
+    import { Pages } from "../pages.js";
     export let args;
 
     import Preloader from "../components/gui/Preloader.svelte";
@@ -66,7 +67,7 @@
         {#if !p.profileInfo.profile.is_stats_hidden}    
         <div class="profile-info-stats">
             <div class="stats-title"><span class=stats-text>Статистика</span> <ViewAllButton onClickCallback={() => {
-                if (p.profileInfo.is_my_profile) updateViewportComponent(1, {typeBookmark: 0, sort: 1});
+                if (p.profileInfo.is_my_profile) updateViewportComponent(Pages.BOOKMARKS, {typeBookmark: 0, sort: 1});
                 else showBookmarksModal = true;
             }}/></div>
             <BookmarkTypes --bookmark-radius="10px" --bookmark-height="28px" types={{
