@@ -631,3 +631,93 @@ ipcMain.handle("shikimori:exchangeCode", async (_, { authCode, domain }) => {
     return null;
   }
 });
+
+ipcMain.handle("shikimori:refreshToken", async (_, { refreshToken, domain }) => {
+  if (!refreshToken) return null;
+
+  const SHIKI_CLIENT_ID = process.env.SHIKIMORI_CLIENT_ID || '';
+  const SHIKI_CLIENT_SECRET = process.env.SHIKIMORI_CLIENT_SECRET || '';
+
+  try {
+    const tokenUrl = `https://${domain || 'shikimori.io'}/oauth/token`;
+    const res = await net.fetch(tokenUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        grant_type: "refresh_token",
+        client_id: SHIKI_CLIENT_ID,
+        client_secret: SHIKI_CLIENT_SECRET,
+        refresh_token: refreshToken.trim()
+      })
+    });
+
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) {
+    console.error("Shikimori refresh token error:", e);
+    return null;
+  }
+});
+
+ipcMain.handle("download:episode", async (event, { url, defaultFileName, referer }) => {
+  if (!url) return { success: false, error: "No URL provided" };
+
+  try {
+    const win = BrowserWindow.getFocusedWindow();
+    const sanitizedName = (defaultFileName || "episode.mp4").replace(/[\/\\?%*:|"<>]/g, "_");
+
+    const { canceled, filePath } = await dialog.showSaveDialog(win, {
+      title: "Сохранить серию",
+      defaultPath: sanitizedName,
+      filters: [
+        { name: "Видео файлы (*.mp4, *.mkv, *.ts)", extensions: ["mp4", "mkv", "ts"] },
+        { name: "Все файлы", extensions: ["*"] }
+      ]
+    });
+
+    if (canceled || !filePath) {
+      return { success: false, canceled: true };
+    }
+
+    const headers = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    };
+    if (referer) {
+      headers["Referer"] = referer;
+    }
+
+    const targetUrl = url.startsWith("//") ? `https:${url}` : url;
+    const res = await net.fetch(targetUrl, { headers });
+    if (!res.ok) {
+      return { success: false, error: `HTTP ${res.status}` };
+    }
+
+    const totalBytes = parseInt(res.headers.get('content-length') || '0', 10);
+    let downloadedBytes = 0;
+
+    const fileStream = fs.createWriteStream(filePath);
+    const reader = res.body.getReader();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      fileStream.write(value);
+      downloadedBytes += value.length;
+      if (totalBytes > 0 && event.sender) {
+        const percent = Math.round((downloadedBytes / totalBytes) * 100);
+        event.sender.send("download:progress", {
+          filePath,
+          downloadedBytes,
+          totalBytes,
+          percent
+        });
+      }
+    }
+    fileStream.end();
+
+    return { success: true, filePath };
+  } catch (e) {
+    console.error("Episode download error:", e);
+    return { success: false, error: e.message };
+  }
+});

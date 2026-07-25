@@ -66,6 +66,8 @@ contextBridge.exposeInMainWorld('debugApi', {
 contextBridge.exposeInMainWorld('shikimoriAuth', {
   exchangeCode: (authCode, domain) =>
     ipcRenderer.invoke('shikimori:exchangeCode', { authCode, domain }),
+  refreshToken: (refreshToken, domain) =>
+    ipcRenderer.invoke('shikimori:refreshToken', { refreshToken, domain }),
 });
 
 contextBridge.exposeInMainWorld('discordRPC', {
@@ -85,5 +87,15 @@ contextBridge.exposeInMainWorld('updater', {
     const handler = (_, status) => callback(status);
     ipcRenderer.on('updater:status', handler);
     return () => ipcRenderer.removeListener('updater:status', handler);
+  }
+});
+
+contextBridge.exposeInMainWorld('episodeDownloader', {
+  download: (url, defaultFileName, referer) =>
+    ipcRenderer.invoke('download:episode', { url, defaultFileName, referer }),
+  onProgress: (callback) => {
+    const handler = (_, progress) => callback(progress);
+    ipcRenderer.on('download:progress', handler);
+    return () => ipcRenderer.removeListener('download:progress', handler);
   }
 });

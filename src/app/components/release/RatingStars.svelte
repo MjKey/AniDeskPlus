@@ -8,6 +8,8 @@
     let hoveredVote = 0;
     let isLoading = false;
 
+    $: numericMyVote = Number(myVote) || 0;
+
     async function setVote(voteVal) {
         if (!anixApi.client.token) {
             dispatch("showAuthModal");
@@ -17,18 +19,18 @@
         if (isLoading) return;
         isLoading = true;
 
-        const targetVote = myVote === voteVal ? 0 : voteVal;
+        const targetVote = numericMyVote === voteVal ? 0 : voteVal;
 
         try {
             if (targetVote === 0) {
                 const res = await anixApi.release.removeVote(releaseId);
-                if (res.code === 0) {
+                if (res && res.code === 0) {
                     myVote = 0;
                     dispatch("voteChange", { vote: 0 });
                 }
             } else {
                 const res = await anixApi.release.addVote(releaseId, targetVote);
-                if (res.code === 0) {
+                if (res && res.code === 0) {
                     myVote = targetVote;
                     dispatch("voteChange", { vote: targetVote });
                 }
@@ -47,8 +49,8 @@
         {#each [1, 2, 3, 4, 5] as star}
             <button
                 class="star-btn"
-                class:active={star <= (hoveredVote || myVote)}
-                class:my-star={star <= myVote}
+                class:active={star <= (hoveredVote || numericMyVote)}
+                class:my-star={star <= numericMyVote}
                 onmouseenter={() => (hoveredVote = star)}
                 onmouseleave={() => (hoveredVote = 0)}
                 onclick={() => setVote(star)}
@@ -59,10 +61,10 @@
             </button>
         {/each}
 
-        {#if myVote > 0}
+        {#if numericMyVote > 0}
             <button
                 class="remove-vote-btn"
-                onclick={() => setVote(myVote)}
+                onclick={() => setVote(numericMyVote)}
                 disabled={isLoading}
                 title="Сбросить оценку"
             >
@@ -70,8 +72,8 @@
             </button>
         {/if}
     </div>
-    {#if myVote > 0}
-        <div class="vote-status">{myVote} из 5 звезд</div>
+    {#if numericMyVote > 0}
+        <div class="vote-status">{numericMyVote} из 5 звезд</div>
     {:else}
         <div class="vote-status hint">Нажмите на звезду</div>
     {/if}

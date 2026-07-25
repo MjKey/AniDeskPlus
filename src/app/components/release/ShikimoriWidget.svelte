@@ -21,16 +21,20 @@
         try {
             shikiToken = localStorage.getItem("shikimori_token");
             const userStr = localStorage.getItem("shikimori_user");
-            if (userStr) shikiUser = JSON.parse(userStr);
-
-            // Do not send any network requests to Shikimori if no token is connected
-            if (!shikiToken) {
-                isLoading = false;
-                return;
+            if (userStr) {
+                try { shikiUser = JSON.parse(userStr); } catch (e) {}
             }
 
             if (release) {
                 shikiAnime = await searchShikimoriAnimeGraphQL(release.title_original, release.title_ru, shikiToken);
+                shikiToken = localStorage.getItem("shikimori_token");
+                const freshUserStr = localStorage.getItem("shikimori_user");
+                if (freshUserStr) {
+                    try { shikiUser = JSON.parse(freshUserStr); } catch (e) {}
+                } else {
+                    shikiUser = null;
+                }
+
                 if (shikiAnime) {
                     if (shikiAnime.userRate) {
                         shikiUserRate = shikiAnime.userRate;

@@ -44,6 +44,38 @@ export async function exchangeShikimoriCode(authCode) {
     return null;
 }
 
+export function clearShikimoriAuth() {
+    localStorage.removeItem("shikimori_token");
+    localStorage.removeItem("shikimori_user");
+    localStorage.removeItem("shikimori_refresh_token");
+}
+
+export async function refreshShikimoriToken() {
+    const refreshToken = localStorage.getItem("shikimori_refresh_token");
+    if (!refreshToken) {
+        clearShikimoriAuth();
+        return null;
+    }
+
+    try {
+        if (window.shikimoriAuth?.refreshToken) {
+            const tokenData = await window.shikimoriAuth.refreshToken(refreshToken, getShikimoriDomain());
+            if (tokenData && tokenData.access_token) {
+                localStorage.setItem("shikimori_token", tokenData.access_token);
+                if (tokenData.refresh_token) {
+                    localStorage.setItem("shikimori_refresh_token", tokenData.refresh_token);
+                }
+                return tokenData.access_token;
+            }
+        }
+    } catch (e) {
+        console.error("[Shikimori] Token refresh failed:", e);
+    }
+
+    clearShikimoriAuth();
+    return null;
+}
+
 function getCache(key) {
     try {
         const item = localStorage.getItem(`shiki_cache_${key}`);
@@ -78,7 +110,8 @@ export async function searchShikimoriAnimeGraphQL(titleOriginal, titleRu, token 
     const queryStr = titleOriginal || titleRu;
     if (!queryStr) return null;
 
-    const cacheKey = `gql_search_${queryStr}_${Boolean(token)}_${getShikimoriDomain()}`;
+    let activeToken = token || localStorage.getItem("shikimori_token");
+    const cacheKey = `gql_search_${queryStr}_${Boolean(activeToken)}_${getShikimoriDomain()}`;
     const cached = getCache(cacheKey);
     if (cached !== null) return cached;
 
@@ -102,16 +135,15 @@ export async function searchShikimoriAnimeGraphQL(titleOriginal, titleRu, token 
         }
     `;
 
-    try {
+    const doFetch = async (authToken) => {
         const headers = {
             "Content-Type": "application/json",
             "User-Agent": USER_AGENT
         };
-        if (token) {
-            headers["Authorization"] = `Bearer ${token}`;
+        if (authToken) {
+            headers["Authorization"] = `Bearer ${authToken}`;
         }
-
-        const res = await fetch(getShikimoriGraphQlUrl(), {
+        return await fetch(getShikimoriGraphQlUrl(), {
             method: "POST",
             headers,
             body: JSON.stringify({
@@ -119,6 +151,21 @@ export async function searchShikimoriAnimeGraphQL(titleOriginal, titleRu, token 
                 variables: { search: queryStr }
             })
         });
+    };
+
+    try {
+        let res = await doFetch(activeToken);
+
+        if (res.status === 401 && activeToken) {
+            console.warn("[Shikimori GraphQL] Token 401. Attempting refresh...");
+            const newToken = await refreshShikimoriToken();
+            if (newToken) {
+                res = await doFetch(newToken);
+            } else {
+                console.warn("[Shikimori GraphQL] Token refresh failed. Falling back to unauthenticated search.");
+                res = await doFetch(null);
+            }
+        }
 
         if (!res.ok) return null;
         const result = await res.json();
@@ -134,14 +181,26 @@ export async function searchShikimoriAnimeGraphQL(titleOriginal, titleRu, token 
 }
 
 export async function getShikimoriWhoAmI(token) {
-    if (!token) return null;
-    try {
-        const res = await fetch(`${getShikimoriBaseUrl()}/users/whoami`, {
+    let activeToken = token || localStorage.getItem("shikimori_token");
+    if (!activeToken) return null;
+
+    const doFetch = async (authToken) => {
+        return await fetch(`${getShikimoriBaseUrl()}/users/whoami`, {
             headers: {
                 "User-Agent": USER_AGENT,
-                "Authorization": `Bearer ${token}`
+                "Authorization": `Bearer ${authToken}`
             }
         });
+    };
+
+    try {
+        let res = await doFetch(activeToken);
+        if (res.status === 401) {
+            const newToken = await refreshShikimoriToken();
+            if (newToken) {
+                res = await doFetch(newToken);
+            }
+        }
         if (!res.ok) return null;
         return await res.json();
     } catch (e) {
@@ -151,15 +210,27 @@ export async function getShikimoriWhoAmI(token) {
 }
 
 export async function getShikimoriUserRate(shikiAnimeId, token, userId) {
-    if (!token || !userId || !shikiAnimeId) return null;
-    try {
+    let activeToken = token || localStorage.getItem("shikimori_token");
+    if (!activeToken || !userId || !shikiAnimeId) return null;
+
+    const doFetch = async (authToken) => {
         const url = `${getShikimoriBaseUrl()}/v2/user_rates?user_id=${userId}&target_id=${shikiAnimeId}&target_type=Anime`;
-        const res = await fetch(url, {
+        return await fetch(url, {
             headers: {
                 "User-Agent": USER_AGENT,
-                "Authorization": `Bearer ${token}`
+                "Authorization": `Bearer ${authToken}`
             }
         });
+    };
+
+    try {
+        let res = await doFetch(activeToken);
+        if (res.status === 401) {
+            const newToken = await refreshShikimoriToken();
+            if (newToken) {
+                res = await doFetch(newToken);
+            }
+        }
         if (!res.ok) return null;
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
@@ -172,9 +243,10 @@ export async function getShikimoriUserRate(shikiAnimeId, token, userId) {
 }
 
 export async function saveShikimoriUserRate(shikiAnimeId, token, userId, status, episodes, existingRateId = null) {
-    if (!token || !userId || !shikiAnimeId) return null;
+    let activeToken = token || localStorage.getItem("shikimori_token");
+    if (!activeToken || !userId || !shikiAnimeId) return null;
 
-    try {
+    const doFetch = async (authToken) => {
         const isUpdate = Boolean(existingRateId);
         const url = isUpdate 
             ? `${getShikimoriBaseUrl()}/v2/user_rates/${existingRateId}`
@@ -191,15 +263,25 @@ export async function saveShikimoriUserRate(shikiAnimeId, token, userId, status,
             }
         });
 
-        const res = await fetch(url, {
+        return await fetch(url, {
             method,
             headers: {
                 "Content-Type": "application/json",
                 "User-Agent": USER_AGENT,
-                "Authorization": `Bearer ${token}`
+                "Authorization": `Bearer ${authToken}`
             },
             body
         });
+    };
+
+    try {
+        let res = await doFetch(activeToken);
+        if (res.status === 401) {
+            const newToken = await refreshShikimoriToken();
+            if (newToken) {
+                res = await doFetch(newToken);
+            }
+        }
 
         if (!res.ok) {
             console.error("[Shikimori v2] Save user rate response error:", res.status);

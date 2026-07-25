@@ -44,7 +44,16 @@
     let availableGPU = false;
 
     const user_token = localStorageWritable("user_token", null);
-    user_token.subscribe((value) => (utoken = JSON.parse(value)));
+    user_token.subscribe((value) => {
+        try {
+            utoken = value ? JSON.parse(value) : null;
+        } catch (e) {
+            utoken = null;
+        }
+        if (window.anixApi?.client) {
+            window.anixApi.client.token = utoken?.token || null;
+        }
+    });
 
     let firstRun;
 
@@ -93,6 +102,9 @@
         token: utoken?.token,
         baseUrl: `https://${endpointUrl}`,
     }).endpoints;
+    if (utoken?.token) {
+        anixApi.client.token = utoken.token;
+    }
     window.profileInfo = utoken
         ? anixApi.profile
               .info(utoken?.id)

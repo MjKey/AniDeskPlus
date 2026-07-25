@@ -179,15 +179,106 @@
 
         return res;
     }
+
+    let downloadingEpisodeId = null;
+
+    async function downloadEpisode(ep, evt) {
+        if (evt) evt.stopPropagation();
+        if (downloadingEpisodeId) return;
+
+        downloadingEpisodeId = ep.id;
+
+        try {
+            let availableQuality = {};
+            let referer = null;
+
+            switch (currentSourceName) {
+                case "Kodik":
+                    const kLinks = await KodikParser.getDirectLinks(ep.url);
+                    for (const [key, value] of Object.entries(kLinks || {})) {
+                        availableQuality[key] = { src: value[0].src };
+                    }
+                    referer = "https://kodik.info/";
+                    break;
+
+                case "Liberty":
+                case "Libria":
+                    availableQuality = (await AniLibriaParser.getDirectLinks(ep.url)) || {};
+                    break;
+
+                case "Sibnet":
+                    await utils.fallback(async (success) => {
+                        const link = await Sibnet.Parse(ep.url);
+                        if (link) {
+                            availableQuality = { "720": { src: link } };
+                            success = true;
+                        }
+                    }, 3);
+                    referer = "https://video.sibnet.ru/";
+                    break;
+            }
+
+            const rawUrl =
+                availableQuality["1080"]?.src ||
+                availableQuality["720"]?.src ||
+                availableQuality["480"]?.src ||
+                availableQuality["360"]?.src ||
+                Object.values(availableQuality)[0]?.src;
+
+            if (!rawUrl) {
+                if (window.notify?.send) {
+                    notify.send({ title: "Ошибка скачивания", message: "Не удалось получить прямую ссылку на видео." });
+                }
+                return;
+            }
+
+            const url = URL.canParse(rawUrl) ? rawUrl : `https:${rawUrl}`;
+            const releaseTitle = args?.title_ru || args?.title_original || "Аниме";
+            const defaultFileName = `${releaseTitle} - ${ep.name}${currentDubberName ? ` (${currentDubberName})` : ""}.mp4`;
+
+            if (window.episodeDownloader?.download) {
+                const res = await window.episodeDownloader.download(url, defaultFileName, referer);
+                if (res?.success) {
+                    if (window.notify?.send) {
+                        notify.send({ title: "Скачивание завершено", message: `Серия ${ep.name} успешно сохранена!` });
+                    }
+                } else if (res?.error) {
+                    if (window.notify?.send) {
+                        notify.send({ title: "Ошибка скачивания", message: res.error });
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Failed to download episode:", e);
+        } finally {
+            downloadingEpisodeId = null;
+        }
+    }
 </script>
 
 {#snippet baseCard(x, clickCallback)}
     {@const pos = watchMap.get(x.position || parseInt(x.name?.match(/\d+/)?.[0] || '1', 10) || 1)}
-    <button class="base-card" onclick={clickCallback}>
+    <div class="base-card" role="button" tabindex="0" onclick={clickCallback}>
         <div class="base-card-name">
             {x.name}
         </div>
         <div class="right-menu flex-row">
+            <button
+                class="episode-download-btn flex-row"
+                title="Скачать серию"
+                onclick={(evt) => downloadEpisode(x, evt)}
+                disabled={downloadingEpisodeId === x.id}
+            >
+                {#if downloadingEpisodeId === x.id}
+                    <span class="download-spinner">⏳</span>
+                {:else}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                {/if}
+            </button>
             {#if x.is_watched || pos?.completed}
                 <img src="./assets/icons/checkmark.svg" alt="check" />
             {/if}
@@ -195,7 +286,7 @@
         {#if pos && pos.percentage > 0 && !pos.completed}
             <div class="episode-progress-bar" style="width: {pos.percentage}%"></div>
         {/if}
-    </button>
+    </div>
 {/snippet}
 
 <div class="modal-title">
@@ -443,6 +534,36 @@
     .right-menu {
         margin-left: auto;
         margin-right: 0;
-        justify-items: center;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .episode-download-btn {
+        background: transparent;
+        border: none;
+        color: var(--secondary-text-color);
+        padding: 4px 6px;
+        border-radius: 6px;
+        cursor: pointer;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        line-height: 1;
+    }
+
+    .episode-download-btn:hover {
+        background-color: var(--alt-gray-background-color, rgba(255, 255, 255, 0.15));
+        color: var(--main-text-color);
+        transform: scale(1.1);
+    }
+
+    .episode-download-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .download-spinner {
+        font-size: 14px;
+        animation: spin 1s infinite linear;
     }
 </style>

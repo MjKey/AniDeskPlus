@@ -192,21 +192,21 @@
                         </div>
                         <RatingStars
                             releaseId={r.release.id}
-                            myVote={r.release.vote || r.release.my_vote || 0}
+                            myVote={r.release.vote ?? r.release.my_vote ?? r.release.user_vote ?? r.release.vote_value ?? 0}
                             on:showAuthModal={() => updateViewportComponent(AuthPlaceholder)}
                             on:voteChange={(e) => {
                                 const newVote = e.detail.vote;
                                 r.release.vote = newVote;
                                 r.release.my_vote = newVote;
-                                anixApi.release.info(r.release.id, false).then((fresh) => {
+                                r.release = { ...r.release };
+                                anixApi.release.info(r.release.id, true).then((fresh) => {
                                     if (fresh && fresh.release) {
-                                        r.release.grade = fresh.release.grade;
-                                        r.release.vote_count = fresh.release.vote_count;
-                                        r.release.vote_1_count = fresh.release.vote_1_count;
-                                        r.release.vote_2_count = fresh.release.vote_2_count;
-                                        r.release.vote_3_count = fresh.release.vote_3_count;
-                                        r.release.vote_4_count = fresh.release.vote_4_count;
-                                        r.release.vote_5_count = fresh.release.vote_5_count;
+                                        r.release = {
+                                            ...r.release,
+                                            ...fresh.release,
+                                            vote: newVote,
+                                            my_vote: newVote
+                                        };
                                     }
                                 });
                             }}
