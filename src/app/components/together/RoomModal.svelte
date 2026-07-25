@@ -273,20 +273,20 @@
         width: 640px;
         max-width: 90vw;
         max-height: 85vh;
-        background: #18181f;
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 18px;
-        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
-        color: #ffffff;
+        background: var(--alt-background-color, #1a1919);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 20px;
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7);
+        color: var(--main-text-color, #ffffff);
         overflow: hidden;
     }
 
     .modal-header {
         align-items: center;
         justify-content: space-between;
-        padding: 16px 24px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        background: rgba(255, 255, 255, 0.03);
+        padding: 18px 24px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--select-button-left-color, rgba(255, 255, 255, 0.03));
     }
 
     .title {
@@ -294,12 +294,13 @@
         gap: 10px;
         font-size: 18px;
         font-weight: 700;
+        color: var(--main-text-color);
     }
 
     .close-btn {
         background: none;
         border: none;
-        color: rgba(255, 255, 255, 0.5);
+        color: var(--secondary-text-color, rgba(255, 255, 255, 0.5));
         font-size: 18px;
         cursor: pointer;
         padding: 4px;
@@ -307,13 +308,13 @@
     }
 
     .close-btn:hover {
-        color: #ffffff;
+        color: var(--main-text-color, #ffffff);
     }
 
     .tabs-header {
         display: flex;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        background: rgba(0, 0, 0, 0.2);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(0, 0, 0, 0.25);
     }
 
     .tab-btn {
@@ -321,7 +322,7 @@
         background: none;
         border: none;
         padding: 12px 16px;
-        color: rgba(255, 255, 255, 0.6);
+        color: var(--secondary-text-color, rgba(255, 255, 255, 0.6));
         font-size: 13px;
         font-weight: 500;
         cursor: pointer;
@@ -330,8 +331,8 @@
     }
 
     .tab-btn.active {
-        color: #ffffff;
-        border-bottom-color: #2f80ed;
+        color: var(--main-text-color, #ffffff);
+        border-bottom-color: var(--watching-color, #52b628);
         background: rgba(255, 255, 255, 0.05);
     }
 
@@ -342,13 +343,14 @@
     }
 
     .notice-bar {
-        background: rgba(39, 174, 96, 0.2);
-        border: 1px solid rgba(39, 174, 96, 0.4);
-        color: #27ae60;
-        padding: 8px 14px;
-        border-radius: 8px;
+        background: var(--watching-shadow-color, rgba(82, 182, 40, 0.2));
+        border: 1px solid var(--watching-color, #52b628);
+        color: var(--watching-color, #52b628);
+        padding: 10px 16px;
+        border-radius: 10px;
         font-size: 13px;
         justify-content: center;
+        font-weight: 600;
     }
 
     .tab-content {
@@ -357,17 +359,17 @@
 
     .sub-desc {
         font-size: 13px;
-        color: rgba(255, 255, 255, 0.6);
+        color: var(--secondary-text-color, rgba(255, 255, 255, 0.6));
         line-height: 1.5;
         margin: 0;
     }
 
     .info-card {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 12px;
-        padding: 16px;
-        gap: 12px;
+        background: var(--select-button-color, #202020);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        padding: 18px;
+        gap: 14px;
     }
 
     .card-row {
@@ -377,23 +379,24 @@
     }
 
     .card-row .label {
-        color: rgba(255, 255, 255, 0.6);
+        color: var(--secondary-text-color, rgba(255, 255, 255, 0.6));
     }
 
     .card-row .value {
         font-weight: 600;
+        color: var(--main-text-color);
     }
 
     .card-row .room-code {
         font-family: monospace;
         font-size: 15px;
-        color: #56ccf2;
+        color: var(--watching-color, #52b628);
     }
 
     .card-row .link {
         font-family: monospace;
         font-size: 11px;
-        color: rgba(255, 255, 255, 0.7);
+        color: var(--secondary-text-color, rgba(255, 255, 255, 0.7));
         max-width: 320px;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -407,7 +410,7 @@
 
     .btn {
         padding: 10px 18px;
-        border-radius: 10px;
+        border-radius: 12px;
         border: none;
         font-size: 13px;
         font-weight: 600;
@@ -416,12 +419,13 @@
     }
 
     .btn.primary {
-        background: #2f80ed;
+        background: var(--watching-color, #52b628);
         color: #ffffff;
     }
 
     .btn.primary:hover:not(:disabled) {
-        background: #276ace;
+        background: #469f22;
+        transform: translateY(-1px);
     }
 
     .btn.secondary {

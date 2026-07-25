@@ -45,6 +45,7 @@
     export let performSkipOp = null;
     export let performSkipEd = null;
     export let volumePercent = 50;
+    export let onOpenTogetherModal = null;
 
     let showSettings = false;
     let dropdownElements, dropdownType;
@@ -233,6 +234,7 @@
         titleRu={args?.release?.title_ru}
         episodeName={cEpisode?.name}
         dubberName={args?.episodes?.[0]?.source?.type?.name}
+        {onOpenTogetherModal}
     />
 
     <!-- Dropdowns (Left & Settings) -->

@@ -926,6 +926,7 @@
         {performRestartVideo}
         {performSkipOp}
         {performSkipEd}
+        onOpenTogetherModal={() => (showTogetherRoomModal = true)}
     />
 
     <TogetherOverlay

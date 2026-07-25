@@ -6,10 +6,14 @@
     import DropdownButton from "../buttons/DropdownButton.svelte";
     import { getReleasePositions } from "../../utils/watchPosition.js";
 
+    import RoomModal from "../together/RoomModal.svelte";
+
     const dispatch = createEventDispatcher();
 
     export let args;
     export let showed;
+
+    let showTogetherModal = false;
 
     let currentDubberId,
         currentDubberName,
@@ -293,6 +297,10 @@
 <div class="modal-title">
     <span class="title">Выбор эпизода</span>
     <div class="modal-buttons flex-row">
+        <button class="together-btn flex-row" onclick={() => (showTogetherModal = true)} title="Совместный просмотр (AniTogether)">
+            <span>🎬</span>
+            <span>Смотреть вместе</span>
+        </button>
         <div class="dubber-select-container flex-row">
             <DropdownButton
                 placeholder="Озвучка"
@@ -571,8 +579,25 @@
         cursor: not-allowed;
     }
 
-    .download-spinner {
-        font-size: 14px;
-        animation: spin 1s infinite linear;
+    .together-btn {
+        align-items: center;
+        gap: 6px;
+        background: var(--select-button-color, #202020);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: var(--main-text-color);
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .together-btn:hover {
+        background: var(--alt-gray-background-color, #2C2828);
+        border-color: #56ccf2;
+        color: #56ccf2;
     }
 </style>
+
+<RoomModal bind:showed={showTogetherModal} />
