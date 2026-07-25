@@ -394,9 +394,11 @@
                 let aQ = {};
                 const kLinks = await KodikParser.getDirectLinks(episode.url);
                 for (const [key, value] of Object.entries(kLinks || {})) {
-                    aQ[key] = {
-                        src: value[0].src,
-                    };
+                    const cleanKey = String(key).replace(/p$/i, '');
+                    const srcUrl = Array.isArray(value) ? value[0]?.src : value?.src;
+                    if (srcUrl) {
+                        aQ[cleanKey] = { src: srcUrl };
+                    }
                 }
                 availableQuality = aQ;
                 break;
@@ -441,7 +443,7 @@
         args.availableQuality = availableQuality || {};
         if (url) {
             link = `${URL.canParse(url) ? url : `https:${url}`}`;
-            hlsManager.loadSource(link);
+            hlsManager.loadSource(link, true);
             args.src = link;
         }
 
@@ -634,13 +636,7 @@
                 await playVideo(currentEpisode);
             }
         } else {
-            hlsManager.loadSource(args.src);
-            try {
-                await video.play();
-            } catch (e) {
-                console.error("[Player] video.play error, re-fetching episode:", e);
-                if (currentEpisode) await playVideo(currentEpisode);
-            }
+            hlsManager.loadSource(args.src, true);
         }
 
         if (rpcManager) {

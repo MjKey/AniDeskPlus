@@ -46,8 +46,9 @@ export class HlsManager {
     /**
      * Загрузить видео-источник (HLS или MP4/direct fallback)
      * @param {string} url
+     * @param {boolean} [autoPlay=true]
      */
-    loadSource(url) {
+    loadSource(url, autoPlay = true) {
         if (!this._video) return;
 
         const isHls = HlsManager.isHlsUrl(url);
@@ -57,10 +58,33 @@ export class HlsManager {
             if (this._hls) {
                 this._hls.loadSource(url);
                 this._hls.attachMedia(this._video);
+                if (autoPlay) {
+                    this._hls.once(Hls.Events.MANIFEST_PARSED, () => {
+                        if (this._video) {
+                            this._video.play().catch((e) => {
+                                console.warn("[HlsManager] Autoplay error after manifest parsed:", e);
+                            });
+                        }
+                    });
+                }
             }
         } else {
             this.destroy();
             this._video.src = url;
+            if (autoPlay) {
+                const onMetadata = () => {
+                    if (this._video) {
+                        this._video.play().catch((e) => {
+                            console.warn("[HlsManager] Autoplay error:", e);
+                        });
+                    }
+                };
+                if (this._video.readyState >= 1) {
+                    onMetadata();
+                } else {
+                    this._video.addEventListener("loadedmetadata", onMetadata, { once: true });
+                }
+            }
         }
     }
 

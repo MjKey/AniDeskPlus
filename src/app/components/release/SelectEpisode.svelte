@@ -368,11 +368,13 @@
                                     d.url,
                                 );
                                 for (const [key, value] of Object.entries(
-                                    kLinks,
+                                    kLinks || {},
                                 )) {
-                                    aQ[key] = {
-                                        src: value[0].src,
-                                    };
+                                    const cleanKey = String(key).replace(/p$/i, '');
+                                    const srcUrl = Array.isArray(value) ? value[0]?.src : value?.src;
+                                    if (srcUrl) {
+                                        aQ[cleanKey] = { src: srcUrl };
+                                    }
                                 }
                                 availableQuality = aQ;
                                 break;
@@ -385,17 +387,17 @@
                                 break;
 
                             case "Sibnet":
-                                await utils.fallback(async (success) => {
-                                    const link = await Sibnet.Parse(d.url);
-                                    if (!link) return;
+                                await utils.fallback(async () => {
+                                    const link = await (SibnetParser.getDirectLinks ? SibnetParser.getDirectLinks(d.url) : SibnetParser.getDirectLink(d.url));
+                                    if (!link) return false;
 
+                                    const srcUrl = typeof link === 'string' ? link : (link["720"]?.src || link["720"]?.[0]?.src || link.src || link);
                                     availableQuality = {
                                         "720": {
-                                            src: link,
+                                            src: srcUrl,
                                         },
                                     };
-
-                                    success = true;
+                                    return true;
                                 }, 3);
                                 break;
                         }
