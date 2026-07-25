@@ -13,6 +13,7 @@
     export let release = {};
     export let playVideo = null;
     export let reloadPlayer = null;
+    export let isStalled = false;
 
     const dispatch = createEventDispatcher();
 
@@ -98,6 +99,7 @@
                 oninput={onVolumeInput}
             />
         </div>
+        {#if isStalled}
         <button
             class="gui-bottom-button"
             title="Обновить плеер"
@@ -115,6 +117,7 @@
                 style="filter: invert(1);"
             />
         </button>
+        {/if}
         <button
             class="gui-bottom-button"
             onclick={(e) => {
@@ -240,6 +243,12 @@
 
     .left-content {
         margin-left: 15px;
+    }
+
+    .top-content {
+        position: relative;
+        z-index: 5;
+        pointer-events: auto;
     }
 
     .right-content {

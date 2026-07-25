@@ -22,6 +22,7 @@
     export let isScrubbing = false;
     export let playVideo;
     export let reloadPlayer = null;
+    export let showReloadHint = false;
     export let cEpisode = args.currentEpisode;
     export let dropdownShowed = false;
     export let transparentPercent = 50;
@@ -287,6 +288,7 @@
             release={args.release}
             {playVideo}
             {reloadPlayer}
+            isStalled={showReloadHint}
             on:forceHide={forceHide}
             on:showEpisodesDropdown={showEpisodesDropdown}
             on:showDubbersDropdown={showDubbersDropdown}

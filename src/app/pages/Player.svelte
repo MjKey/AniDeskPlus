@@ -768,6 +768,7 @@
         {durationTime}
         bind:cEpisode={currentEpisode}
         {reloadPlayer}
+        {showReloadHint}
         transparentPercent={playerSettings.opacityInterface}
         {changeQuality}
         {changeUpscale}
