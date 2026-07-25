@@ -93,7 +93,8 @@ export function decompressSdpToken(token) {
     for (let i = 0; i < binary.length; i++) {
       bytes[i] = binary.charCodeAt(i);
     }
-    const jsonStr = pako.inflate(bytes, { to: 'string' });
+    const inflatedBytes = pako.inflate(bytes);
+    const jsonStr = typeof inflatedBytes === 'string' ? inflatedBytes : new TextDecoder().decode(inflatedBytes);
     const obj = JSON.parse(jsonStr);
 
     const type = obj.t === 'o' ? 'offer' : (obj.t === 'a' ? 'answer' : (obj.type || 'offer'));
