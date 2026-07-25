@@ -7,6 +7,7 @@
 
     let hoveredVote = 0;
     let isLoading = false;
+    let localVote = 0;
 
     function parseVoteValue(val) {
         if (typeof val === "number") return val;
@@ -20,7 +21,14 @@
         return 0;
     }
 
-    $: numericMyVote = parseVoteValue(myVote);
+    $: {
+        const parsed = parseVoteValue(myVote);
+        if (parsed > 0) {
+            localVote = parsed;
+        } else if (myVote === 0 && localVote === 0) {
+            localVote = 0;
+        }
+    }
 
     async function setVote(voteVal) {
         if (!anixApi.client.token) {
@@ -31,10 +39,11 @@
         if (isLoading) return;
         isLoading = true;
 
-        const oldVote = numericMyVote;
-        const targetVote = numericMyVote === voteVal ? 0 : voteVal;
+        const oldVote = localVote;
+        const targetVote = localVote === voteVal ? 0 : voteVal;
 
-        // Optimistically update rating in UI immediately
+        // Immediately update local state so stars stay highlighted!
+        localVote = targetVote;
         myVote = targetVote;
         dispatch("voteChange", { vote: targetVote });
 
@@ -47,12 +56,14 @@
             }
 
             if (res && res.code != 0) {
-                console.warn("Vote API returned non-zero code:", res);
+                console.warn("[RatingStars] Vote failed with code:", res);
+                localVote = oldVote;
                 myVote = oldVote;
                 dispatch("voteChange", { vote: oldVote });
             }
         } catch (e) {
-            console.error("Failed to update vote:", e);
+            console.error("[RatingStars] Failed to update vote:", e);
+            localVote = oldVote;
             myVote = oldVote;
             dispatch("voteChange", { vote: oldVote });
         } finally {
@@ -67,8 +78,8 @@
         {#each [1, 2, 3, 4, 5] as star}
             <button
                 class="star-btn"
-                class:active={star <= (hoveredVote || numericMyVote)}
-                class:my-star={star <= numericMyVote}
+                class:active={star <= (hoveredVote || localVote)}
+                class:my-star={star <= localVote}
                 onmouseenter={() => (hoveredVote = star)}
                 onmouseleave={() => (hoveredVote = 0)}
                 onclick={() => setVote(star)}
@@ -79,10 +90,10 @@
             </button>
         {/each}
 
-        {#if numericMyVote > 0}
+        {#if localVote > 0}
             <button
                 class="remove-vote-btn"
-                onclick={() => setVote(numericMyVote)}
+                onclick={() => setVote(localVote)}
                 disabled={isLoading}
                 title="Сбросить оценку"
             >
@@ -90,8 +101,8 @@
             </button>
         {/if}
     </div>
-    {#if numericMyVote > 0}
-        <div class="vote-status">{numericMyVote} из 5 звезд</div>
+    {#if localVote > 0}
+        <div class="vote-status">{localVote} из 5 звезд</div>
     {:else}
         <div class="vote-status hint">Нажмите на звезду</div>
     {/if}
