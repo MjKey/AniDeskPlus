@@ -75,6 +75,29 @@
     let availableGPU = false;
     let sleepTimerLabel = "Выкл";
     let activeEpisodeRequestId = 0;
+    let showReloadHint = false;
+    let reloadHintTimeout = null;
+
+    function resetReloadHintTimer() {
+        showReloadHint = false;
+        if (reloadHintTimeout) clearTimeout(reloadHintTimeout);
+        reloadHintTimeout = setTimeout(() => {
+            if (loading) {
+                showReloadHint = true;
+            }
+        }, 3500);
+    }
+
+    async function reloadPlayer() {
+        showReloadHint = false;
+        loading = true;
+        showSkipToast("Обновление источника...");
+        resetReloadHintTimer();
+        const ep = currentEpisode || args?.currentEpisode;
+        if (ep) {
+            await playVideo(ep);
+        }
+    }
 
     function getReleaseId() {
         return args?.release?.id || args?.id || null;
@@ -371,6 +394,7 @@
     });
 
     async function playVideo(episode) {
+        resetReloadHintTimer();
         const requestId = ++activeEpisodeRequestId;
         const relId = getReleaseId();
         const prevEp = currentEpisode || args?.currentEpisode;
@@ -743,6 +767,7 @@
         {currentTime}
         {durationTime}
         bind:cEpisode={currentEpisode}
+        {reloadPlayer}
         transparentPercent={playerSettings.opacityInterface}
         {changeQuality}
         {changeUpscale}
@@ -764,7 +789,17 @@
         {performSkipEd}
     />
 
-    <span class:hide={!loading} class="loader"></span>
+    {#if loading}
+        <div class="loader-box flex-column">
+            <span class="loader"></span>
+            {#if showReloadHint}
+                <button class="reload-hint-btn flex-row" onclick={reloadPlayer} title="Перезагрузить плеер">
+                    <img src="./assets/icons/refresh.svg" width="14" height="14" alt="refresh" style="filter: invert(1);" />
+                    <span>Обновить плеер</span>
+                </button>
+            {/if}
+        </div>
+    {/if}
 
     {#if availableGPU}
         <canvas
@@ -802,6 +837,38 @@
         box-sizing: border-box;
         animation: rotation 1s linear infinite;
         z-index: 1;
+    }
+
+    .loader-box {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 10;
+        align-items: center;
+        gap: 24px;
+        pointer-events: auto;
+    }
+
+    .reload-hint-btn {
+        background: rgba(30, 30, 30, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #fff;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 13px;
+        cursor: pointer;
+        align-items: center;
+        gap: 8px;
+        backdrop-filter: blur(8px);
+        transition: all 0.2s ease;
+        margin-top: 40px;
+    }
+
+    .reload-hint-btn:hover {
+        background: rgba(50, 50, 50, 0.95);
+        border-color: rgba(255, 255, 255, 0.4);
+        transform: scale(1.05);
     }
 
     @keyframes rotation {

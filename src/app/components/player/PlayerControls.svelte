@@ -12,6 +12,7 @@
     export let episodes = [];
     export let release = {};
     export let playVideo = null;
+    export let reloadPlayer = null;
 
     const dispatch = createEventDispatcher();
 
@@ -97,6 +98,23 @@
                 oninput={onVolumeInput}
             />
         </div>
+        <button
+            class="gui-bottom-button"
+            title="Обновить плеер"
+            onclick={(e) => {
+                e.stopPropagation();
+                if (reloadPlayer) reloadPlayer();
+                else if (playVideo && cEpisode) playVideo(cEpisode);
+            }}
+        >
+            <img
+                src="./assets/icons/refresh.svg"
+                alt="refresh"
+                width="22px"
+                height="22px"
+                style="filter: invert(1);"
+            />
+        </button>
         <button
             class="gui-bottom-button"
             onclick={(e) => {
