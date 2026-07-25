@@ -233,7 +233,7 @@
                 return;
             }
 
-            const url = URL.canParse(rawUrl) ? rawUrl : `https:${rawUrl}`;
+            const url = rawUrl.startsWith('//') ? `https:${rawUrl}` : rawUrl;
             const releaseTitle = args?.title_ru || args?.title_original || "Аниме";
             const defaultFileName = `${releaseTitle} - ${ep.name}${currentDubberName ? ` (${currentDubberName})` : ""}.mp4`;
 

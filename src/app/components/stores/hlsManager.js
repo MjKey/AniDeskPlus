@@ -95,7 +95,7 @@ export class HlsManager {
     changeQuality(qualityUrl) {
         if (!this._video) return;
 
-        const url = URL.canParse(qualityUrl) ? qualityUrl : `https:${qualityUrl}`;
+        const url = qualityUrl.startsWith('//') ? `https:${qualityUrl}` : qualityUrl;
         const isHls = HlsManager.isHlsUrl(url);
 
         if (isHls) {

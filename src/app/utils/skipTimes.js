@@ -155,7 +155,7 @@ function parseKodikSkipString(skipString) {
 async function getKodikSkipTimes(episodeUrl) {
     if (!episodeUrl) return null;
     try {
-        const url = URL.canParse(episodeUrl) ? episodeUrl : `https:${episodeUrl}`;
+        const url = episodeUrl.startsWith('//') ? `https:${episodeUrl}` : episodeUrl;
         const res = await fetch(url, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
