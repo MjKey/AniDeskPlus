@@ -8,9 +8,11 @@
     let isChecking = false;
     let showOriginalDevs = false;
 
-    onMount(async () => {
+    onMount(() => {
         if (window.prc?.getVersions) {
-            versionInfo = await window.prc.getVersions();
+            window.prc.getVersions().then(v => {
+                versionInfo = v;
+            });
         }
         if (window.updater?.onStatus) {
             const unsub = window.updater.onStatus((statusData) => {
@@ -291,7 +293,7 @@
     .version-number {
         font-size: 20px;
         font-weight: bold;
-        color: var(--select-button-left-color);
+        color: var(--main-text-color);
         margin-top: 4px;
     }
 

@@ -1,4 +1,5 @@
 <script>
+    import { Pages } from "../../pages.js";
     import { localStorageWritable } from "@babichjacob/svelte-localstorage";
     import LeftMenuButton from "../left-menu/Button.svelte";
     import LeftMenuAvatar from "../left-menu/Avatar.svelte";
@@ -108,18 +109,18 @@
 
 <div
     class="left-menu menu-hidden unselectable"
-    class:hide={viewportComponent == views[11]}
+    class:hide={viewportComponent == views[Pages.PLAYER]}
 >
     <div class="top-menu-content">
         {#if !utoken}
-            {@render defaultAvatar(() => updateViewportComponent(10))}
+            {@render defaultAvatar(() => updateViewportComponent(Pages.LOGIN))}
         {:else}
             {#await myProfile}
                 {@render defaultAvatar(null)}
             {:then p}
                 <LeftMenuAvatar
                     onClickCallback={() =>
-                        updateViewportComponent(9, utoken.id)}
+                        updateViewportComponent(Pages.PROFILE, utoken.id)}
                     avatar={p.profile.avatar}
                 />
             {/await}

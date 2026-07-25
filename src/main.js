@@ -197,6 +197,8 @@ if (!isFirstInstance) {
   });
 }
 
+const discordRpcClient = new rpc.Client({ clientId: rpcClientId });
+
 if (SettingsFirst.EnableRPC) {
   discordRpcClient.login().catch(console.error);
 }
@@ -470,7 +472,10 @@ ipcMain.handle("window:minimize", (_) => {
 });
 
 ipcMain.handle("window:maximize", (_) => {
-  if (mainWindow.isMaximized()) {
+  if (!mainWindow) return;
+  if (mainWindow.isFullScreen()) {
+    mainWindow.setFullScreen(false);
+  } else if (mainWindow.isMaximized()) {
     mainWindow.unmaximize();
   } else {
     mainWindow.maximize();
@@ -692,30 +697,108 @@ ipcMain.handle("download:episode", async (event, { url, defaultFileName, referer
       return { success: false, error: `HTTP ${res.status}` };
     }
 
-    const totalBytes = parseInt(res.headers.get('content-length') || '0', 10);
-    let downloadedBytes = 0;
+    const contentType = (res.headers.get("content-type") || "").toLowerCase();
+    const isM3u8Url = targetUrl.includes(".m3u8");
 
-    const fileStream = fs.createWriteStream(filePath);
-    const reader = res.body.getReader();
+    if (isM3u8Url || contentType.includes("mpegurl") || contentType.includes("x-mpegurl")) {
+      let manifestText = await res.text();
+      let currentPlaylistUrl = targetUrl;
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      fileStream.write(value);
-      downloadedBytes += value.length;
-      if (totalBytes > 0 && event.sender) {
-        const percent = Math.round((downloadedBytes / totalBytes) * 100);
-        event.sender.send("download:progress", {
-          filePath,
-          downloadedBytes,
-          totalBytes,
-          percent
-        });
+      if (manifestText.includes("#EXT-X-STREAM-INF")) {
+        const lines = manifestText.split("\n").map(l => l.trim());
+        let bestSubUrl = null;
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].startsWith("#EXT-X-STREAM-INF")) {
+            const nextLine = lines[i + 1];
+            if (nextLine && !nextLine.startsWith("#")) {
+              bestSubUrl = nextLine;
+              if (lines[i].includes("1080") || lines[i].includes("720")) {
+                break;
+              }
+            }
+          }
+        }
+        if (bestSubUrl) {
+          currentPlaylistUrl = new URL(bestSubUrl, targetUrl).toString();
+          const subRes = await net.fetch(currentPlaylistUrl, { headers });
+          if (subRes.ok) {
+            manifestText = await subRes.text();
+          }
+        }
       }
-    }
-    fileStream.end();
 
-    return { success: true, filePath };
+      const lines = manifestText.split("\n").map(l => l.trim());
+      const segments = [];
+      for (const line of lines) {
+        if (line && !line.startsWith("#")) {
+          const absoluteSegmentUrl = new URL(line, currentPlaylistUrl).toString();
+          segments.push(absoluteSegmentUrl);
+        }
+      }
+
+      if (segments.length === 0) {
+        return { success: false, error: "Не найдены сегменты видео в HLS плейлисте." };
+      }
+
+      const fileStream = fs.createWriteStream(filePath);
+      const totalSegments = segments.length;
+
+      try {
+        for (let i = 0; i < totalSegments; i++) {
+          const segUrl = segments[i];
+          const segRes = await net.fetch(segUrl, { headers });
+          if (segRes.ok) {
+            const reader = segRes.body.getReader();
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              fileStream.write(value);
+            }
+          }
+
+          if (event.sender) {
+            const percent = Math.round(((i + 1) / totalSegments) * 100);
+            event.sender.send("download:progress", {
+              filePath,
+              downloadedBytes: i + 1,
+              totalBytes: totalSegments,
+              percent
+            });
+          }
+        }
+      } finally {
+        fileStream.end();
+      }
+      return { success: true, filePath };
+    } else {
+      const totalBytes = parseInt(res.headers.get('content-length') || '0', 10);
+      let downloadedBytes = 0;
+
+      const fileStream = fs.createWriteStream(filePath);
+      const reader = res.body.getReader();
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          fileStream.write(value);
+          downloadedBytes += value.length;
+          if (totalBytes > 0 && event.sender) {
+            const percent = Math.round((downloadedBytes / totalBytes) * 100);
+            event.sender.send("download:progress", {
+              filePath,
+              downloadedBytes,
+              totalBytes,
+              percent
+            });
+          }
+        }
+      } finally {
+        fileStream.end();
+      }
+
+      return { success: true, filePath };
+    }
   } catch (e) {
     console.error("Episode download error:", e);
     return { success: false, error: e.message };

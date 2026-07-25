@@ -106,10 +106,13 @@
 
 <style>
     .skip-interval-row {
+        position: absolute;
+        bottom: 120px;
+        right: 25px;
+        z-index: 10;
         display: flex;
         justify-content: flex-end;
-        padding: 4px 16px 2px;
-        width: 100%;
+        pointer-events: auto;
     }
 
     .skip-interval-button {

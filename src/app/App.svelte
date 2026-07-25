@@ -94,7 +94,7 @@
     /**
      * Глобальные переменные
      */
-    window.baseSettings = settings.getAll().then((res) => (baseSettings = res));
+    window.baseSettings = settings.getAll().then((res) => (window.baseSettings = res));
     window.versions = prc
         .getVersions()
         .then((versions) => (window.versions = versions));
@@ -130,7 +130,8 @@
 
         anixApi.notification
             .countNotifications()
-            .then((x) => notificationCount.set(x.count));
+            .then((x) => notificationCount.set(x.count))
+            .catch((e) => console.error("Notification count error:", e));
     }
 
     async function checkBookmarkNewEpisodes() {

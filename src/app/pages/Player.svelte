@@ -402,39 +402,44 @@
 
             case "Liberty":
             case "Libria":
-                await utils.fallback(async (success) => {
-                    const aLinks = await AniLibriaParser.getDirectLinks(
+                await utils.fallback(async () => {
+                    availableQuality = await window.prc.parseLibria(
                         episode.url,
                     );
-                    availableQuality = aLinks;
-                    success = true;
+                    if (!availableQuality) return false;
+                    return true;
                 }, 3);
                 break;
 
             case "Sibnet":
-                await utils.fallback(async (success) => {
+                await utils.fallback(async () => {
                     const link = await Sibnet.Parse(episode.url);
-                    if (!link) return;
+                    if (!link) return false;
 
                     availableQuality = {
                         "720": {
                             src: link,
                         },
                     };
-                    success = true;
+                    return true;
                 }, 3);
                 break;
         }
 
         const url =
-            availableQuality[String(playingSettings.defaultQuality)]?.src ??
-            availableQuality["720"]?.src;
+            availableQuality?.[String(playingSettings.defaultQuality)]?.src ??
+            availableQuality?.["1080"]?.src ??
+            availableQuality?.["720"]?.src ??
+            availableQuality?.["480"]?.src ??
+            availableQuality?.["360"]?.src ??
+            Object.values(availableQuality || {})[0]?.src;
 
-        args.availableQuality = availableQuality;
-        link = `${URL.canParse(url) ? url : `https:${url}`}`;
-
-        hlsManager.loadSource(link);
-        args.src = link;
+        args.availableQuality = availableQuality || {};
+        if (url) {
+            link = `${URL.canParse(url) ? url : `https:${url}`}`;
+            hlsManager.loadSource(link);
+            args.src = link;
+        }
 
         if (analytics) {
             analytics.trackEvent("play_anime", {
@@ -600,7 +605,10 @@
                     }
                 },
                 onEscape: () => {
-                    if (isFullscreen) window.elecWindow?.exitFullscreen();
+                    if (isFullscreen) {
+                        window.elecWindow?.exitFullscreen();
+                        return;
+                    }
                     updateViewportComponent(Pages.RELEASE, { id: args.release.id });
                 },
                 onWheel: (deltaY) => {
@@ -617,8 +625,19 @@
         updateSkipTimes();
 
         if (availableGPU) await renderUpscale();
-        hlsManager.loadSource(args.src);
-        await video.play();
+        if (!args.src || args.src === "https:undefined" || args.src === "undefined") {
+            if (currentEpisode) {
+                await playVideo(currentEpisode);
+            }
+        } else {
+            hlsManager.loadSource(args.src);
+            try {
+                await video.play();
+            } catch (e) {
+                console.error("[Player] video.play error, re-fetching episode:", e);
+                if (currentEpisode) await playVideo(currentEpisode);
+            }
+        }
 
         if (rpcManager) {
             rpcManager.setPlaying(currentEpisode.name, video.currentTime, video.duration);
@@ -639,6 +658,9 @@
         if (sleepTimerManager) sleepTimerManager.clear();
         if (hotkeyManager) hotkeyManager.detach();
         if (hlsManager) hlsManager.destroy();
+
+        clearTimeout(skipToastTimeout);
+        clearTimeout(resumeToastTimeout);
 
         document.removeEventListener("mousemove", hideOnIdle);
 
@@ -669,7 +691,7 @@
         {args}
         {isHidden}
         {forceHide}
-        {isFullscreen}
+        bind:isFullscreen
         {isPaused}
         {video}
         {isTimePosClick}

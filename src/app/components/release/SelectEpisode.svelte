@@ -207,12 +207,13 @@
                     break;
 
                 case "Sibnet":
-                    await utils.fallback(async (success) => {
+                    await utils.fallback(async () => {
                         const link = await Sibnet.Parse(ep.url);
                         if (link) {
                             availableQuality = { "720": { src: link } };
-                            success = true;
+                            return true;
                         }
+                        return false;
                     }, 3);
                     referer = "https://video.sibnet.ru/";
                     break;
@@ -413,9 +414,12 @@
                         }
 
                         const url =
-                            availableQuality[
-                                String(playingSettings.defaultQuality)
-                            ]?.src ?? availableQuality["720"]?.src;
+                            availableQuality?.[String(playingSettings.defaultQuality)]?.src ??
+                            availableQuality?.["1080"]?.src ??
+                            availableQuality?.["720"]?.src ??
+                            availableQuality?.["480"]?.src ??
+                            availableQuality?.["360"]?.src ??
+                            Object.values(availableQuality || {})[0]?.src;
 
                         if (playingSettings?.rememberSelection) {
                             updatePlayingSettings({
@@ -426,10 +430,12 @@
                             });
                         }
 
+                        const finalSrc = url ? (URL.canParse(url) ? url : `https:${url}`) : "";
+
                         updateViewportComponent(11, {
-                            src: `${URL.canParse(url) ? url : `https:${url}`}`,
-                            currentQuality: 720,
-                            availableQuality,
+                            src: finalSrc,
+                            currentQuality: playingSettings.defaultQuality || 720,
+                            availableQuality: availableQuality || {},
                             release: args,
                             episodes: i.episodes,
                             currentEpisode: d,

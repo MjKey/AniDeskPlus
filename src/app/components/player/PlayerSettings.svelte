@@ -129,7 +129,7 @@
                     <span
                         >{utils.playerSpeedValues.find(
                             (x) => x.value == video.playbackRate,
-                        ).label} →</span
+                        )?.label ?? video.playbackRate} →</span
                     >
                 </button>
                 <button

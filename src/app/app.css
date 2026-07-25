@@ -102,6 +102,7 @@ body {
   --third-text-color: #7a7a7a;
   --gray-btn: #c0c0c0;
   --settings-dropdown-selected-color: rgb(196, 193, 187);
+  --player-middle-button-select: #e5e5e5;
   color: var(--main-text-color);
 }
 

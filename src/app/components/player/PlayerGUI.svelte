@@ -164,10 +164,15 @@
     }
 
     function showEpisodesDropdown(e) {
-        e.stopPropagation();
-        dropdownElements = args.episodes.map((x) => ({
+        if (e && e.stopPropagation) e.stopPropagation();
+        const firstEp = args?.episodes?.[0];
+        const dubberName = firstEp?.source?.type?.name ?? firstEp?.source?.name ?? "Серии";
+        const sourceName = firstEp?.source?.name ?? "";
+        const subtitle = dubberName && sourceName && dubberName !== sourceName ? `${dubberName} | ${sourceName}` : dubberName;
+
+        dropdownElements = (args?.episodes || []).map((x) => ({
             title: x.name,
-            subtitle: `${args.episodes[0].source.type.name} | ${args.episodes[0].source.name}`,
+            subtitle,
             value: x,
         }));
         dropdownType = "episodes";
@@ -274,7 +279,7 @@
             {currentTime}
             {durationTime}
             bind:volumePercent
-            {isFullscreen}
+            bind:isFullscreen
             bind:showSettings
             bind:cEpisode
             episodes={args.episodes}

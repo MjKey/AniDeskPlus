@@ -22,9 +22,24 @@
         }
     }
 
-    function toggleFullscreen() {
+    async function toggleFullscreen(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
         if (window.elecWindow) {
-            isFullscreen ? window.elecWindow.exitFullscreen() : window.elecWindow.enterFullscreen();
+            if (isFullscreen) {
+                await window.elecWindow.exitFullscreen();
+                isFullscreen = false;
+            } else {
+                await window.elecWindow.enterFullscreen();
+                isFullscreen = true;
+            }
+        } else if (document.documentElement) {
+            if (!document.fullscreenElement) {
+                await document.documentElement.requestFullscreen().catch(() => {});
+                isFullscreen = true;
+            } else {
+                await document.exitFullscreen().catch(() => {});
+                isFullscreen = false;
+            }
         }
     }
 
@@ -134,18 +149,19 @@
 <!-- Bottom Navigation Bar -->
 <div class="bottom-content container flex-row">
     <div class="left-content flex-row">
-        <button class="player-bottom-button" onclick={(e) => dispatch("showEpisodesDropdown", e)}>
+        <button class="player-bottom-button" onclick={(e) => { e.stopPropagation(); dispatch("showEpisodesDropdown", e); }}>
             <img src="./assets/icons/episodeIcon.svg" alt="episode" />
             <span>Серии</span>
         </button>
-        <button class="player-bottom-button" onclick={(e) => dispatch("showDubbersDropdown", e)}>
+        <button class="player-bottom-button" onclick={(e) => { e.stopPropagation(); dispatch("showDubbersDropdown", e); }}>
             <img src="./assets/icons/dubbersIcon.svg" width="22px" alt="dubbers" />
             <span>Озвучка</span>
         </button>
         <button
             class="player-bottom-button"
             class:bottom-disabled={!release?.related_count}
-            onclick={() => {
+            onclick={(e) => {
+                e.stopPropagation();
                 if (release?.related_count > 0) dispatch("showRelatedDropdown");
             }}
         >

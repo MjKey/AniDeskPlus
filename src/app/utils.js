@@ -270,12 +270,16 @@ export default {
     },
 
     async fallback(callback, count) {
-        let success = false;
-
-        for (let i = 0; i < count && !success; i++) {
-            callback(success);
-            if (success) return;
-            await new Promise(r => setTimeout(r, 500));
+        for (let i = 0; i < count; i++) {
+            try {
+                const success = await callback();
+                if (success) return;
+            } catch (e) {
+                console.error("Fallback error:", e);
+            }
+            if (i < count - 1) {
+                await new Promise(r => setTimeout(r, 500));
+            }
         }
     },
 
