@@ -51,11 +51,15 @@
         });
     }).catch((e) => console.error("Error loading release:", e));
 
+    import RoomModal from "../components/together/RoomModal.svelte";
+    import { getP2PClient } from "../components/together/P2PClient.js";
+
     let showSelectEpisodeModal,
         showCommentsModal,
         showRelatedReleasesModal = false,
         showAuthModal = false,
-        showNotAvailableModal = false;
+        showNotAvailableModal = false,
+        showTogetherModal = false;
     let modalSubTitle = null;
 
     let isFavorite = false;
@@ -342,6 +346,11 @@
             bind:modalTitle={modalSubTitle}
             modalSize={{ width: "60%", height: "70%" }}
             on:closeModal={() => (showNotAvailableModal = false)}
+        />
+
+        <RoomModal
+            bind:showed={showTogetherModal}
+            p2pClient={getP2PClient()}
         />
     {/if}
 {/await}

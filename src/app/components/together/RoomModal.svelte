@@ -1,7 +1,12 @@
 <script>
     import { togetherStore, createRoom, joinRoom, leaveRoom } from '../stores/togetherStore.js';
+    import { getP2PClient } from './P2PClient.js';
 
     let { showed = $bindable(false), p2pClient = null } = $props();
+
+    function getClient() {
+        return p2pClient || getP2PClient();
+    }
 
     let activeTab = $state('info'); // 'info' | 'join' | 'sdp'
     let inputRoomCode = $state('');
@@ -28,8 +33,9 @@
     function handleCreateNewRoom() {
         const code = 'TOG-' + Math.random().toString(36).substring(2, 7).toUpperCase();
         createRoom(code);
-        if (p2pClient) {
-            p2pClient.connect(code, true);
+        const client = getClient();
+        if (client) {
+            client.connect(code, true);
         }
         const inviteLink = `anideskplus://together/join?room=${code}`;
         copyToClipboard(inviteLink, 'Комната создана! Ссылка приглашения скопирована.');
@@ -39,16 +45,18 @@
         const code = inputRoomCode.trim().toUpperCase();
         if (!code) return;
         joinRoom(code);
-        if (p2pClient) {
-            p2pClient.connect(code, false);
+        const client = getClient();
+        if (client) {
+            client.connect(code, false);
         }
         showNotice(`Подключение к комнате ${code}...`);
         closeModal();
     }
 
     function handleLeaveRoom() {
-        if (p2pClient) {
-            p2pClient.disconnect();
+        const client = getClient();
+        if (client) {
+            client.disconnect();
         }
         leaveRoom();
         showNotice('Вы вышли из комнаты');
@@ -73,8 +81,9 @@
         sdpError = '';
         sdpStatus = 'Генерация локального SDP предложения...';
         try {
-            if (p2pClient) {
-                generatedSdpToken = await p2pClient.generateSdpToken();
+            const client = getClient();
+            if (client) {
+                generatedSdpToken = await client.generateSdpToken();
                 sdpStatus = 'SDP токен успешно создан. Скопируйте и передайте его партнеру.';
             } else {
                 sdpError = 'P2PClient не инициализирован';
@@ -93,8 +102,9 @@
             return;
         }
         try {
-            if (p2pClient) {
-                const answer = await p2pClient.acceptSdpToken(remoteSdpToken.trim());
+            const client = getClient();
+            if (client) {
+                const answer = await client.acceptSdpToken(remoteSdpToken.trim());
                 if (answer) {
                     sdpAnswerToken = answer;
                     sdpStatus = 'SDP Ответ создан! Скопируйте его и отправьте хосту.';

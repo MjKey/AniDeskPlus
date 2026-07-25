@@ -26,7 +26,7 @@
     import TogetherChat from "../components/together/TogetherChat.svelte";
     import FloatingReactions from "../components/together/FloatingReactions.svelte";
     import RoomModal from "../components/together/RoomModal.svelte";
-    import { P2PClient } from "../components/together/P2PClient.js";
+    import { P2PClient, getP2PClient } from "../components/together/P2PClient.js";
     import { SyncEngine } from "../components/together/SyncEngine.js";
     import { togetherStore, joinRoom } from "../components/stores/togetherStore.js";
 
@@ -592,7 +592,7 @@
         video = await waitForElm(".player-video");
 
         // Initialize AniTogether P2P client & SyncEngine
-        p2pClient = new P2PClient();
+        p2pClient = getP2PClient();
         syncEngine = new SyncEngine(p2pClient, { videoElement: video });
 
         const currentTogetherState = $togetherStore;

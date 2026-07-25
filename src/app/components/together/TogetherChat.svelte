@@ -1,8 +1,13 @@
 <script>
     import { togetherStore, addChatMessage, addReaction } from '../stores/togetherStore.js';
+    import { getP2PClient } from './P2PClient.js';
     import { tick } from 'svelte';
 
     let { p2pClient = null, isOpen = $bindable(true), onClose = () => { isOpen = false; } } = $props();
+
+    function getClient() {
+        return p2pClient || getP2PClient();
+    }
 
     let inputText = $state('');
     let messageListEl = $state(null);
@@ -40,8 +45,9 @@
             timestamp: Date.now()
         };
 
-        if (p2pClient) {
-            p2pClient.send({
+        const client = getClient();
+        if (client) {
+            client.send({
                 type: 'CHAT_MESSAGE',
                 payload: messageObj
             });
@@ -72,8 +78,9 @@
             timestamp: Date.now()
         };
 
-        if (p2pClient) {
-            p2pClient.send({
+        const client = getClient();
+        if (client) {
+            client.send({
                 type: 'EMOTE_REACTION',
                 payload: reactionObj
             });

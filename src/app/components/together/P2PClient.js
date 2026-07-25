@@ -1,4 +1,14 @@
 import { SignalingAdapter, compressSdpToken, decompressSdpToken } from './SignalingAdapter.js';
+import { togetherStore } from '../stores/togetherStore.js';
+
+let globalP2PClientInstance = null;
+
+export function getP2PClient(options = {}) {
+  if (!globalP2PClientInstance) {
+    globalP2PClientInstance = new P2PClient(options);
+  }
+  return globalP2PClientInstance;
+}
 
 /**
  * P2PClient Class
@@ -26,6 +36,7 @@ export class P2PClient {
     this.lanPeerHandlers = new Set();
 
     this.pendingCandidates = [];
+    this.gatheredCandidates = [];
     this.fallbackTimer = null;
     this.lanDiscoveryActive = false;
 
@@ -35,6 +46,10 @@ export class P2PClient {
       { urls: 'stun:stun2.l.google.com:19302' },
       { urls: 'stun:global.stun.twilio.com:3478' }
     ];
+
+    this.onStateChange((newState) => {
+      togetherStore.setConnectionState(newState);
+    });
   }
 
   /**
@@ -73,18 +88,30 @@ export class P2PClient {
     } else {
       // Send join request to trigger host to send offer
       this.signaling.sendSignal({ type: 'join', senderId: this.peerId });
+      // Send join heartbeat periodically until connected
+      const joinInterval = setInterval(() => {
+        if (this.state === 'connecting' && this.signaling && this.signaling.isConnected) {
+          this.signaling.sendSignal({ type: 'join', senderId: this.peerId });
+        } else {
+          clearInterval(joinInterval);
+        }
+      }, 1000);
     }
 
-    // 6. Set Fallback Timer (8 seconds) for Direct MQTT Relay if WebRTC P2P fails or times out
-    this._startFallbackTimer(8000);
+    // 6. Set Fallback Timer (3 seconds) for Direct MQTT Relay if WebRTC P2P fails or times out
+    this._startFallbackTimer(3000);
   }
 
   _initPeerConnection() {
+    this._cleanupPeerConnection();
+    this.gatheredCandidates = [];
+
     try {
       this.pc = new RTCPeerConnection({ iceServers: this.iceServers });
 
       this.pc.onicecandidate = (event) => {
         if (event.candidate) {
+          this.gatheredCandidates.push(event.candidate);
           this.signaling.sendSignal({
             type: 'candidate',
             candidate: event.candidate,
@@ -142,13 +169,16 @@ export class P2PClient {
   }
 
   async _createHostOffer() {
-    if (!this.pc) return;
+    if (!this.pc) this._initPeerConnection();
     try {
       const offer = await this.pc.createOffer();
       await this.pc.setLocalDescription(offer);
+      // Wait briefly for initial candidates
+      await new Promise((res) => setTimeout(res, 200));
       this.signaling.sendSignal({
         type: 'offer',
         sdp: offer.sdp,
+        candidates: this.gatheredCandidates,
         senderId: this.peerId
       });
     } catch (err) {
@@ -157,39 +187,50 @@ export class P2PClient {
   }
 
   async _handleRemoteSignal(signal) {
-    if (!signal || !this.pc) return;
+    if (!signal) return;
 
     try {
       if (signal.type === 'join' && this.isHost) {
-        if (this.pc.localDescription) {
-          this.signaling.sendSignal({
-            type: 'offer',
-            sdp: this.pc.localDescription.sdp,
-            senderId: this.peerId
-          });
-        } else {
-          this._createHostOffer();
-        }
+        console.log('[P2P] Guest requested join. Re-creating Host offer...');
+        this._initPeerConnection();
+        await this._createHostOffer();
       } else if (signal.type === 'offer' && !this.isHost) {
+        console.log('[P2P] Received offer from Host');
+        if (!this.pc) this._initPeerConnection();
+
         await this.pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: signal.sdp }));
+        
+        if (signal.candidates && Array.isArray(signal.candidates)) {
+          for (const cand of signal.candidates) {
+            try { await this.pc.addIceCandidate(new RTCIceCandidate(cand)); } catch (e) {}
+          }
+        }
         this._drainPendingCandidates();
 
         const answer = await this.pc.createAnswer();
         await this.pc.setLocalDescription(answer);
 
+        await new Promise((res) => setTimeout(res, 200));
         this.signaling.sendSignal({
           type: 'answer',
           sdp: answer.sdp,
+          candidates: this.gatheredCandidates,
           senderId: this.peerId
         });
       } else if (signal.type === 'answer' && this.isHost) {
-        if (this.pc.signalingState !== 'stable') {
+        console.log('[P2P] Host received answer from Guest');
+        if (this.pc && this.pc.signalingState !== 'stable') {
           await this.pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: signal.sdp }));
+          if (signal.candidates && Array.isArray(signal.candidates)) {
+            for (const cand of signal.candidates) {
+              try { await this.pc.addIceCandidate(new RTCIceCandidate(cand)); } catch (e) {}
+            }
+          }
           this._drainPendingCandidates();
         }
       } else if (signal.type === 'candidate') {
         const candidate = new RTCIceCandidate(signal.candidate);
-        if (this.pc.remoteDescription && this.pc.remoteDescription.type) {
+        if (this.pc && this.pc.remoteDescription && this.pc.remoteDescription.type) {
           await this.pc.addIceCandidate(candidate);
         } else {
           this.pendingCandidates.push(candidate);

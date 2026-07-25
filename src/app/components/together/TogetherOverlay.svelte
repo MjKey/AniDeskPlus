@@ -1,7 +1,12 @@
 <script>
     import { togetherStore, leaveRoom } from '../stores/togetherStore.js';
+    import { getP2PClient } from './P2PClient.js';
 
     let { p2pClient = null, onToggleChat = () => {}, onOpenSdpModal = () => {} } = $props();
+
+    function getClient() {
+        return p2pClient || getP2PClient();
+    }
 
     let copiedToast = $state(false);
     let toastTimeout = null;
@@ -31,8 +36,9 @@
     }
 
     function handleLeave() {
-        if (p2pClient) {
-            p2pClient.disconnect();
+        const client = getClient();
+        if (client) {
+            client.disconnect();
         }
         leaveRoom();
     }

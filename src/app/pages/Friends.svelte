@@ -11,6 +11,7 @@
     import MetaInfo from "../components/gui/MetaInfo.svelte";
     import RoomModal from "../components/together/RoomModal.svelte";
     import { togetherStore } from "../components/stores/togetherStore.js";
+    import { getP2PClient } from "../components/together/P2PClient.js";
 
     let uid;
     let page = 0;
@@ -27,6 +28,10 @@
         togetherStore.createRoom(roomCode, {
             name: friend?.profile?.login || 'Friend'
         });
+        const client = getP2PClient();
+        if (client) {
+            client.connect(roomCode, true);
+        }
         showRoomModal = true;
     }
 
