@@ -192,10 +192,11 @@
                         </div>
                         <RatingStars
                             releaseId={r.release.id}
-                            myVote={r.release.vote || r.release.my_vote || r.release.user_vote || r.release.vote_value || 0}
+                            myVote={r.release.your_vote || r.release.vote || r.release.my_vote || r.release.user_vote || r.release.vote_value || 0}
                             on:showAuthModal={() => updateViewportComponent(AuthPlaceholder)}
                             on:voteChange={(e) => {
                                 const newVote = e.detail.vote;
+                                r.release.your_vote = newVote;
                                 r.release.vote = newVote;
                                 r.release.my_vote = newVote;
                                 r.release = { ...r.release };
@@ -204,6 +205,7 @@
                                         r.release = {
                                             ...r.release,
                                             ...fresh.release,
+                                            your_vote: newVote,
                                             vote: newVote,
                                             my_vote: newVote
                                         };
