@@ -603,11 +603,11 @@ ipcMain.handle("debug:send", (_, { type, message, data }) => {
   sendDebugLog(type, message, data);
 });
 
-ipcMain.handle("shikimori:exchangeCode", async (_, { authCode, domain }) => {
+ipcMain.handle("shikimori:exchangeCode", async (_, { authCode, domain, clientId, clientSecret }) => {
   if (!authCode) return null;
 
-  const SHIKI_CLIENT_ID = process.env.SHIKIMORI_CLIENT_ID || '';
-  const SHIKI_CLIENT_SECRET = process.env.SHIKIMORI_CLIENT_SECRET || '';
+  const SHIKI_CLIENT_ID = clientId || process.env.SHIKIMORI_CLIENT_ID || '';
+  const SHIKI_CLIENT_SECRET = clientSecret || process.env.SHIKIMORI_CLIENT_SECRET || '';
   const SHIKI_REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob";
 
   try {
@@ -632,11 +632,11 @@ ipcMain.handle("shikimori:exchangeCode", async (_, { authCode, domain }) => {
   }
 });
 
-ipcMain.handle("shikimori:refreshToken", async (_, { refreshToken, domain }) => {
+ipcMain.handle("shikimori:refreshToken", async (_, { refreshToken, domain, clientId, clientSecret }) => {
   if (!refreshToken) return null;
 
-  const SHIKI_CLIENT_ID = process.env.SHIKIMORI_CLIENT_ID || '';
-  const SHIKI_CLIENT_SECRET = process.env.SHIKIMORI_CLIENT_SECRET || '';
+  const SHIKI_CLIENT_ID = clientId || process.env.SHIKIMORI_CLIENT_ID || '';
+  const SHIKI_CLIENT_SECRET = clientSecret || process.env.SHIKIMORI_CLIENT_SECRET || '';
 
   try {
     const tokenUrl = `https://${domain || 'shikimori.io'}/oauth/token`;

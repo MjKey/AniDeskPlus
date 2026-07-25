@@ -19,24 +19,30 @@
         if (isLoading) return;
         isLoading = true;
 
+        const oldVote = numericMyVote;
         const targetVote = numericMyVote === voteVal ? 0 : voteVal;
 
+        // Optimistically update rating in UI immediately
+        myVote = targetVote;
+        dispatch("voteChange", { vote: targetVote });
+
         try {
+            let res;
             if (targetVote === 0) {
-                const res = await anixApi.release.removeVote(releaseId);
-                if (res && res.code === 0) {
-                    myVote = 0;
-                    dispatch("voteChange", { vote: 0 });
-                }
+                res = await anixApi.release.removeVote(releaseId);
             } else {
-                const res = await anixApi.release.addVote(releaseId, targetVote);
-                if (res && res.code === 0) {
-                    myVote = targetVote;
-                    dispatch("voteChange", { vote: targetVote });
-                }
+                res = await anixApi.release.addVote(releaseId, targetVote);
+            }
+
+            if (res && res.code != 0) {
+                console.warn("Vote API returned non-zero code:", res);
+                myVote = oldVote;
+                dispatch("voteChange", { vote: oldVote });
             }
         } catch (e) {
             console.error("Failed to update vote:", e);
+            myVote = oldVote;
+            dispatch("voteChange", { vote: oldVote });
         } finally {
             isLoading = false;
         }

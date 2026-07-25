@@ -17,7 +17,7 @@ const fastBuild = process.env.FAST_BUILD === 'true';
 
 function loadEnv() {
     const envPath = path.resolve(__dirname, '.env');
-    const env = {};
+    const env = { ...process.env };
     if (fs.existsSync(envPath)) {
         const lines = fs.readFileSync(envPath, 'utf-8').split('\n');
         for (const line of lines) {
@@ -30,7 +30,9 @@ function loadEnv() {
                 if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
                     val = val.slice(1, -1);
                 }
-                env[key] = val;
+                if (!env[key]) {
+                    env[key] = val;
+                }
             }
         }
     }
@@ -45,7 +47,8 @@ function envPlugin() {
         transform(code, id) {
             if (!id.includes('node_modules')) {
                 let replaced = code
-                    .replace(/__ENV_SHIKIMORI_CLIENT_ID__/g, JSON.stringify(envVars.SHIKIMORI_CLIENT_ID || ''));
+                    .replace(/__ENV_SHIKIMORI_CLIENT_ID__/g, JSON.stringify(envVars.SHIKIMORI_CLIENT_ID || ''))
+                    .replace(/__ENV_SHIKIMORI_CLIENT_SECRET__/g, JSON.stringify(envVars.SHIKIMORI_CLIENT_SECRET || ''));
                 return { code: replaced, map: null };
             }
         }
