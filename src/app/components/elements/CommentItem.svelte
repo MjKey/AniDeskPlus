@@ -180,10 +180,10 @@
             >
             {#if isMyComment}
                 <button class="comment-action-btn" onclick={() => (isEditing = !isEditing)} title="Редактировать">
-                    ✏️
+                    Изменить
                 </button>
                 <button class="comment-action-btn delete" onclick={handleDelete} title="Удалить">
-                    🗑️
+                    Удалить
                 </button>
             {/if}
         </div>

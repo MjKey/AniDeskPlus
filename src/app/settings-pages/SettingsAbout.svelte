@@ -91,7 +91,7 @@
                         <span class="update-status-text">{updateStatus.text || "Проверка завершена"}</span>
                         {#if updateStatus.status === 'downloaded'}
                             <button class="install-btn" onclick={() => window.updater.install()}>
-                                ⚡ Перезапустить и установить
+                                Перезапустить и установить
                             </button>
                         {:else if updateStatus.url}
                             <button class="open-release-btn" onclick={() => winApi.openLink(updateStatus.url)}>
