@@ -84,22 +84,11 @@
                 onmouseleave={() => (hoveredVote = 0)}
                 onclick={() => setVote(star)}
                 disabled={isLoading}
-                title={`Оценить на ${star} из 5`}
+                title={star === localVote ? "Нажмите еще раз, чтобы сбросить оценку" : `Оценить на ${star} из 5`}
             >
                 ★
             </button>
         {/each}
-
-        {#if localVote > 0}
-            <button
-                class="remove-vote-btn"
-                onclick={() => setVote(localVote)}
-                disabled={isLoading}
-                title="Сбросить оценку"
-            >
-                ✕
-            </button>
-        {/if}
     </div>
     {#if localVote > 0}
         <div class="vote-status">{localVote} из 5 звезд</div>
