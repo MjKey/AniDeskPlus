@@ -14,7 +14,6 @@
     </div>
     {#if onOpenTogetherModal}
         <button class="gui-together-btn flex-row" onclick={onOpenTogetherModal} title="Совместный просмотр (AniTogether)">
-            <span>🎬</span>
             <span class="together-text">Смотреть вместе</span>
         </button>
     {/if}

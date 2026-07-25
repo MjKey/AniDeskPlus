@@ -117,7 +117,6 @@
             <!-- Modal Header -->
             <div class="modal-header flex-row">
                 <div class="title flex-row">
-                    <span class="icon">🎬</span>
                     <span>Смотреть Вместе (AniTogether)</span>
                 </div>
                 <button class="close-btn" onclick={closeModal}>✕</button>
@@ -182,7 +181,7 @@
                                 <h3>Вы еще не в комнате</h3>
                                 <p>Создайте новую комнату для совместного просмотра с друзьями или воспользуйтесь присоединением по коду.</p>
                                 <button class="btn primary main-action-btn" onclick={handleCreateNewRoom}>
-                                    🚀 Создать новую комнату
+                                    Создать новую комнату
                                 </button>
                             </div>
                         {/if}

@@ -156,9 +156,7 @@
                         text="Смотреть вместе"
                         onClickCallback={() => (showTogetherModal = true)}
                         btnType="together"
-                    >
-                        <span style="font-size: 18px; line-height: 1;">🎬</span>
-                    </LeftReleaseBaseButton>
+                    />
                 {/if}
                 <LeftReleaseBaseButton
                     bookmarkType={r.release.profile_list_status ?? 0}

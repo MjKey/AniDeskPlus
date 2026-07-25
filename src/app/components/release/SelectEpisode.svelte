@@ -298,7 +298,6 @@
     <span class="title">Выбор эпизода</span>
     <div class="modal-buttons flex-row">
         <button class="together-btn flex-row" onclick={() => (showTogetherModal = true)} title="Совместный просмотр (AniTogether)">
-            <span>🎬</span>
             <span>Смотреть вместе</span>
         </button>
         <div class="dubber-select-container flex-row">
