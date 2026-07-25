@@ -30,7 +30,8 @@
     }
 
     async function scrollEvent(e) {
-        if (e.srcElement.scrollTop >= e.srcElement.scrollHeight - 2000 && !updateInfo) {
+        const target = e.target || e.currentTarget;
+        if (target && target.scrollTop >= target.scrollHeight - 2000 && !updateInfo) {
             updateInfo = true;
             page++;
             await getCommentPage();

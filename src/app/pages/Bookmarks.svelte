@@ -11,10 +11,21 @@
     const HISTORY_TYPE = 6;
 
     let page = 0;
-    let total_count,
-        firstData_count = null;
+    let total_count = 0,
+        firstData_count = 0;
     let allData = [];
-    let firstData = getPageData(0);
+
+    function fetchFirstData(pageToLoad = 0) {
+        return getPageData(pageToLoad).then((Releases) => {
+            if (Releases && Releases.content) {
+                total_count = Releases.total_count ?? Releases.content.length;
+                firstData_count = Releases.content.length;
+            }
+            return Releases;
+        });
+    }
+
+    let firstData = fetchFirstData(0);
 
     let updateInfo = false;
 
@@ -102,7 +113,7 @@
         args.typeBookmark = type;
         page = 0;
         allData = [];
-        firstData = getPageData(0);
+        firstData = fetchFirstData(0);
 
         if (viewport) {
             viewport.scrollTop = 0;
@@ -110,8 +121,10 @@
     }
 
     const scrollEvent = async (e) => {
+        const target = e.target || e.currentTarget;
         if (
-            e.srcElement.scrollTop >= e.srcElement.scrollHeight - 2000 &&
+            target &&
+            target.scrollTop >= target.scrollHeight - 2000 &&
             !updateInfo &&
             total_count > allData.length + firstData_count
         ) {
@@ -205,15 +218,13 @@
                     args.sort = v;
                     page = 0;
                     allData = [];
-                    firstData = getPageData(0);
+                    firstData = fetchFirstData(0);
                 }}/>
             {/if}
         </div>
         {#await firstData}
             <Preloader />
         {:then Releases}
-            {setTotalCount(Releases.total_count ?? Releases.content.length)}
-            {setFirstDataCount(Releases.content.length)}
             {#each Releases.content as Release}
                 <AnimeRowItem anime={Release} inModal={args?.isModal} />
             {/each}

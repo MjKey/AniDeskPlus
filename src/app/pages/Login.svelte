@@ -4,10 +4,11 @@
     import MetaInfo from "../components/gui/MetaInfo.svelte";
     import BaseMainButton from "../components/buttons/BaseMainButton.svelte";
     import { fade } from "svelte/transition";
+    import { onDestroy } from "svelte";
     let u;
 
     const user = localStorageWritable("user_token", null);
-    user.subscribe((value) => (u = value));
+    const unsubUser = user.subscribe((value) => (u = value));
 
     let activeTab = "login"; // "login" | "register"
     let registerStep = 1; // 1: form, 2: verify code
@@ -15,6 +16,11 @@
     let lastError = null;
     let isLoading = false;
     let errorTimeout = null;
+
+    onDestroy(() => {
+        if (unsubUser) unsubUser();
+        if (errorTimeout) clearTimeout(errorTimeout);
+    });
 
     let loginVal = "";
     let passwordVal = "";

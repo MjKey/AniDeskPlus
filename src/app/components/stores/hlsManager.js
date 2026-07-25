@@ -34,8 +34,9 @@ export class HlsManager {
         if (typeof Hls !== 'undefined' && Hls.isSupported()) {
             this._hls = new Hls();
             this._hls.on(Hls.Events.BUFFER_APPENDING, (_e, data) => {
-                if (this._video && this._video.duration && data?.frag?._streams?.video?.endPTS) {
-                    const percent = (data.frag._streams.video.endPTS / this._video.duration) * 100;
+                const endPTS = data?.frag?._streams?.video?.endPTS ?? data?.frag?.endPTS;
+                if (typeof endPTS === 'number' && this._video && this._video.duration) {
+                    const percent = (endPTS / this._video.duration) * 100;
                     this.onLoadedPercent?.(percent);
                 }
             });
@@ -49,10 +50,9 @@ export class HlsManager {
     loadSource(url) {
         if (!this._video) return;
 
-        const isHlsSupported = typeof Hls !== 'undefined' && Hls.isSupported();
-        const isMp4 = url && new URL(url, window.location.href).pathname.endsWith('.mp4');
+        const isHls = HlsManager.isHlsUrl(url);
 
-        if (isHlsSupported && !isMp4) {
+        if (isHls) {
             this._createHlsInstance();
             if (this._hls) {
                 this._hls.loadSource(url);
@@ -72,10 +72,10 @@ export class HlsManager {
         if (!this._video) return;
 
         const url = URL.canParse(qualityUrl) ? qualityUrl : `https:${qualityUrl}`;
-        const isHlsSupported = typeof Hls !== 'undefined' && Hls.isSupported();
+        const isHls = HlsManager.isHlsUrl(url);
 
-        if (isHlsSupported) {
-            const currentTime = this._video.currentTime;
+        if (isHls) {
+            const currentTime = this._video.currentTime || 0;
             const isPausedNow = this._video.paused;
 
             this._createHlsInstance();
@@ -92,13 +92,28 @@ export class HlsManager {
                 });
             }
         } else {
-            const currentTime = this._video.currentTime;
+            const currentTime = this._video.currentTime || 0;
             const isPausedNow = this._video.paused;
+            const videoEl = this._video;
             this.destroy();
-            this._video.src = url;
-            this._video.currentTime = currentTime;
-            if (!isPausedNow) {
-                this._video.play().catch(() => {});
+            videoEl.src = url;
+
+            const onMetadata = () => {
+                videoEl.removeEventListener("loadedmetadata", onMetadata);
+                try {
+                    videoEl.currentTime = currentTime;
+                } catch (e) {
+                    console.error("[HlsManager] Error setting currentTime:", e);
+                }
+                if (!isPausedNow) {
+                    videoEl.play().catch(() => {});
+                }
+            };
+
+            if (videoEl.readyState >= 1) {
+                onMetadata();
+            } else {
+                videoEl.addEventListener("loadedmetadata", onMetadata, { once: true });
             }
         }
     }

@@ -51,6 +51,16 @@
         justify-content: center;
     }
 
+    :global(.fullscreen) .modal-background,
+    :global(.in-player) .modal-background,
+    :global(.anidesk-player) .modal-background,
+    :global(body.fullscreen) .modal-background {
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+    }
+
     .modal {
         background-color: var(--background-color);
         width: var(--width);

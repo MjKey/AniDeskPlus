@@ -29,6 +29,7 @@ export class HotkeyManager {
     }
 
     _handleKeyDown(e) {
+        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable) return;
         this.pressedKeys.add(e.code);
         const hotkeys = this.getHotkeys() || {};
 
@@ -60,6 +61,9 @@ export class HotkeyManager {
     }
 
     _handleWheel(e) {
+        if (e.target && e.target.closest && e.target.closest('.player-settings, .dropdown, .episode-select, .settings-menu, .scrollable, .modal-content, .modal-background, .menu, select')) {
+            return;
+        }
         if (typeof this.handlers.onWheel === 'function') {
             this.handlers.onWheel(e.deltaY);
         }

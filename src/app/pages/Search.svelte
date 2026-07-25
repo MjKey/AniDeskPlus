@@ -6,6 +6,8 @@
     import MetaInfo from "../components/gui/MetaInfo.svelte";
     import utils from "../utils";
 
+    import { onDestroy } from "svelte";
+
     export let args;
 
     let firstData = [];
@@ -23,7 +25,8 @@
     }
 
     function inputEvent(e) {
-        args.query = e.srcElement.value;
+        const target = e.target || e.currentTarget;
+        args.query = target?.value ?? "";
 
         if (timeout) {
             clearTimeout(timeout);
@@ -35,6 +38,10 @@
     if (args.query) {
         search();
     }
+
+    onDestroy(() => {
+        if (timeout) clearTimeout(timeout);
+    });
 </script>
 
 <div class="search-top-div flex-row">
@@ -65,7 +72,7 @@
             <button onclick={() => (relatedModalShowed = true)}>
                 <div class="related-release flex-row">
                     <div class="release-images flex-row">
-                        {#each { length: 3 } as _, i}
+                        {#each Array(3) as _, i}
                             <img
                                 src={data.related.images[i] ??
                                     "./assets/images/no_image.jpg"}

@@ -35,8 +35,10 @@
     onclick={(e) => e.stopPropagation()}
     onwheel={(e) => e.stopPropagation()}
     onscroll={(e) => {
+        const target = e.target || e.currentTarget;
         if (
-            e.srcElement.scrollTop >= e.srcElement.scrollHeight - 2000 &&
+            target &&
+            target.scrollTop >= target.scrollHeight - 2000 &&
             !updatedScroll
         ) {
             dispatch("scroll-ending", {

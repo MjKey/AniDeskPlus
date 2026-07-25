@@ -78,6 +78,16 @@ export class DiscordRpcManager {
         if (!window.discordRPC) return;
         window.discordRPC.clearActivity();
     }
+
+    clear() {
+        if (window.discordRPC && typeof window.discordRPC.clearActivity === 'function') {
+            window.discordRPC.clearActivity();
+        }
+    }
+
+    destroy() {
+        this.clear();
+    }
 }
 
 export default DiscordRpcManager;

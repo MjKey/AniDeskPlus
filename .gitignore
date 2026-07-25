@@ -20,3 +20,5 @@ anixart-oapi.json
 audit_report.md
 fix_plan.md
 player_decomposition_plan.md
+.agents/
+PROJECT.md

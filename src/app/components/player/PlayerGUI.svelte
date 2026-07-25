@@ -325,12 +325,14 @@
         background-color: rgba(0, 0, 0, var(--back-transparent));
         transition: opacity 0.5s;
         opacity: 1;
+        pointer-events: auto;
     }
 
     .gui-dropdown-left {
         position: absolute;
         bottom: 140px;
         z-index: 3;
+        pointer-events: auto;
     }
 
     .gui-settings-dropdown {
@@ -338,10 +340,16 @@
         bottom: 140px;
         right: 10px;
         z-index: 3;
+        pointer-events: auto;
     }
 
     .hide-gui {
         animation: hide-gui 0.25s forwards;
+        pointer-events: none !important;
+    }
+
+    .hide-gui * {
+        pointer-events: none !important;
     }
 
     @keyframes hide-gui {

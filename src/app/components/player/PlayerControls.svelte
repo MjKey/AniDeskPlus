@@ -91,6 +91,7 @@
                 min="0"
                 max="1"
                 step="0.01"
+                value={volumePercent / 100}
                 class="volume-input"
                 style="--volume-position: {volumePercent}%"
                 oninput={onVolumeInput}

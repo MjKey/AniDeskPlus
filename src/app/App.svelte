@@ -28,15 +28,20 @@
         "api-s.anixsekai.com",
     );
 
-    guiSettingsRaw.subscribe((value) => {
+    const unsubGuiSettings = guiSettingsRaw.subscribe((value) => {
         guiSettings = value;
+        if (guiSettings?.theme) {
+            document.body.className = `${guiSettings.theme}-theme`;
+        }
     });
 
-    endpointUrlRaw.subscribe((value) => {
+    const unsubEndpointUrl = endpointUrlRaw.subscribe((value) => {
         endpointUrl = value;
     });
 
-    document.body.classList = [`${guiSettings.theme}-theme`];
+    if (guiSettings?.theme) {
+        document.body.className = `${guiSettings.theme}-theme`;
+    }
 
     let utoken;
 
@@ -44,7 +49,7 @@
     let availableGPU = false;
 
     const user_token = localStorageWritable("user_token", null);
-    user_token.subscribe((value) => {
+    const unsubUserToken = user_token.subscribe((value) => {
         try {
             utoken = value ? JSON.parse(value) : null;
         } catch (e) {
@@ -58,7 +63,7 @@
     let firstRun;
 
     const firstRunRaw = localStorageWritable("first_run", true);
-    firstRunRaw.subscribe((value) => (firstRun = value));
+    const unsubFirstRun = firstRunRaw.subscribe((value) => (firstRun = value));
 
     discordRPC.setActivity({
         type: 3,
@@ -94,10 +99,11 @@
     /**
      * Глобальные переменные
      */
-    window.baseSettings = settings.getAll().then((res) => (window.baseSettings = res));
+    window.baseSettings = settings.getAll().then((res) => (window.baseSettings = res)).catch((e) => console.error("Error fetching baseSettings:", e));
     window.versions = prc
         .getVersions()
-        .then((versions) => (window.versions = versions));
+        .then((versions) => (window.versions = versions))
+        .catch((e) => console.error("Error fetching versions:", e));
     window.anixApi = new Anixart({
         token: utoken?.token,
         baseUrl: `https://${endpointUrl}`,
@@ -109,6 +115,7 @@
         ? anixApi.profile
               .info(utoken?.id)
               .then((x) => (profileInfo = x.profile))
+              .catch((e) => console.error("Error fetching profileInfo:", e))
         : null;
     window.profileSettings = {
         main: null,
@@ -117,16 +124,22 @@
     };
     window.availableGPU = utils
         .checkGPUSupport()
-        .then((res) => (availableGPU = res));
+        .then((res) => (availableGPU = res))
+        .catch((e) => console.error("Error checking GPU support:", e));
 
     if (utoken) {
         anixApi.settings
             .getCurrentProfileSettings()
-            .then((x) => (profileSettings.main = x));
-        anixApi.settings.getSocial().then((x) => (profileSettings.socials = x));
+            .then((x) => (profileSettings.main = x))
+            .catch((e) => console.error("Error fetching profileSettings.main:", e));
+        anixApi.settings
+            .getSocial()
+            .then((x) => (profileSettings.socials = x))
+            .catch((e) => console.error("Error fetching profileSettings.socials:", e));
         anixApi.settings
             .getLoginInfo()
-            .then((x) => (profileSettings.login = x));
+            .then((x) => (profileSettings.login = x))
+            .catch((e) => console.error("Error fetching profileSettings.login:", e));
 
         anixApi.notification
             .countNotifications()
@@ -171,6 +184,7 @@
 
                     if (targetDubber) {
                         try {
+                            await new Promise((resolve) => setTimeout(resolve, 200));
                             const releaseDetails = await window.anixApi.release.get(releaseId);
                             const dubbers = releaseDetails?.release?.types || releaseDetails?.types || releaseDetails?.release?.dubbers || releaseDetails?.dubbers || [];
                             const matchesDubber = dubbers.some(d =>
@@ -203,6 +217,7 @@
 
     let intervalNotifications;
     let intervalBookmarkCheck;
+    let timeoutBookmarkCheck;
 
     let isDebug = false;
     let unsubNavigate = null;
@@ -231,21 +246,27 @@
         }
 
         // Check bookmark episode updates after initial launch
-        setTimeout(checkBookmarkNewEpisodes, 10000);
+        timeoutBookmarkCheck = setTimeout(checkBookmarkNewEpisodes, 10000);
         intervalBookmarkCheck = setInterval(checkBookmarkNewEpisodes, 300000); // каждые 5 минут
 
         intervalNotifications = setInterval(() => {
             if (window.anixApi?.notification) {
                 anixApi.notification
                     .countNotifications()
-                    .then((x) => notificationCount.set(x.count));
+                    .then((x) => notificationCount.set(x.count))
+                    .catch((e) => console.error("Notification interval count error:", e));
             }
         }, 1800000); // Раз в 30 минут
     });
 
     onDestroy(() => {
+        if (unsubGuiSettings) unsubGuiSettings();
+        if (unsubEndpointUrl) unsubEndpointUrl();
+        if (unsubUserToken) unsubUserToken();
+        if (unsubFirstRun) unsubFirstRun();
         if (unsubNavigate) unsubNavigate();
         if (unsubFullscreen) unsubFullscreen();
+        if (timeoutBookmarkCheck) clearTimeout(timeoutBookmarkCheck);
         if (intervalNotifications) clearInterval(intervalNotifications);
         if (intervalBookmarkCheck) clearInterval(intervalBookmarkCheck);
     });
@@ -255,6 +276,11 @@
     let viewInfo = {
         viewportComponent: HomePage,
         args: {typeReleases: 0},
+    };
+
+    $: viewInfo = {
+        viewportComponent: viewInfo.viewportComponent,
+        args: viewInfo.args
     };
 
     let viewInfoOld = {

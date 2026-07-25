@@ -9,16 +9,20 @@
     const maxSequenceLength = 10;
 
     function hotkeyElementFocus(e) {
+        const target = e.target || e.currentTarget;
         value = [];
-        e.srcElement.innerText = "Ожидание нажатия клавиши...";
+        if (target) target.innerText = "Ожидание нажатия клавиши...";
         captureKeys = true;
     }
 
     function hotkeyElementBlur(e) {
-        e.srcElement.innerText =
-            value.length > 0
-                ? value.map(formatCode).join(" + ")
-                : "Горячая клавиша не установлена...";
+        const target = e.target || e.currentTarget;
+        if (target) {
+            target.innerText =
+                value.length > 0
+                    ? value.map(formatCode).join(" + ")
+                    : "Горячая клавиша не установлена...";
+        }
         captureKeys = false;
     }
 

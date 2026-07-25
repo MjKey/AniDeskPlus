@@ -10,6 +10,33 @@ const loadURL = serve({ directory: './public' });
 const fs = require('fs');
 const rpc = require("@xhayper/discord-rpc");
 
+function loadEnv() {
+  const envPath = path.join(__dirname, '..', '.env');
+  if (fs.existsSync(envPath)) {
+    try {
+      const lines = fs.readFileSync(envPath, 'utf-8').split('\n');
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const idx = trimmed.indexOf('=');
+        if (idx > 0) {
+          const key = trimmed.slice(0, idx).trim();
+          let val = trimmed.slice(idx + 1).trim();
+          if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+            val = val.slice(1, -1);
+          }
+          if (!process.env[key]) {
+            process.env[key] = val;
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error loading .env file:', e);
+    }
+  }
+}
+loadEnv();
+
 const { SibnetParser } = require('anixartjs');
 
 const isDebugMode = process.argv.includes('--debug') || process.argv.includes('-d');
@@ -36,6 +63,7 @@ class SettingsManager {
     this.filePath = filePath;
     this.defaults = defaults;
     this._cache = null;
+    this._writeQueue = Promise.resolve();
   }
 
   _load() {
@@ -62,8 +90,12 @@ class SettingsManager {
     const settings = this._load();
     settings[key] = value;
     this._cache = settings;
-    fs.promises.writeFile(this.filePath, JSON.stringify(settings, null, 2))
-      .catch(e => console.error('Settings write error:', e));
+    const tempPath = `${this.filePath}.tmp`;
+    const data = JSON.stringify(settings, null, 2);
+    this._writeQueue = this._writeQueue.then(async () => {
+      await fs.promises.writeFile(tempPath, data, 'utf-8');
+      await fs.promises.rename(tempPath, this.filePath);
+    }).catch(e => console.error('Settings write error:', e));
   }
 
   getAll() {
@@ -423,6 +455,14 @@ app.on('ready', () => {
   initAutoUpdater();
 });
 
+app.on('before-quit', () => {
+  isQuitting = true;
+  if (tray) {
+    tray.destroy();
+    tray = null;
+  }
+});
+
 app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit();
 });
@@ -431,27 +471,49 @@ app.on('activate', function () {
   if (mainWindow === null) createWindow();
 });
 
-app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
-  event.preventDefault();
-  callback(true);
-});
-
 ipcMain.handle("analytics:trackEvent", () => {});
 ipcMain.handle("power:sleep", () => {
-  const { exec } = require('child_process');
+  const { execFile } = require('child_process');
   if (process.platform === 'win32') {
-    exec('rundll32.exe powrprof.dll,SetSuspendState 0,1,0');
+    execFile('rundll32.exe', ['powrprof.dll,SetSuspendState', '0,1,0']);
   } else if (process.platform === 'linux') {
-    exec('systemctl suspend');
+    execFile('systemctl', ['suspend']);
+  } else if (process.platform === 'darwin') {
+    execFile('pmset', ['sleepnow']);
   }
 });
 ipcMain.handle("power:shutdown", () => {
-  const { exec } = require('child_process');
+  const { execFile } = require('child_process');
   if (process.platform === 'win32') {
-    exec('shutdown /s /t 0');
+    execFile('shutdown.exe', ['/s', '/t', '0']);
   } else if (process.platform === 'linux') {
-    exec('shutdown -h now');
+    execFile('shutdown', ['-h', 'now']);
+  } else if (process.platform === 'darwin') {
+    execFile('shutdown', ['-h', 'now']);
   }
+});
+
+ipcMain.handle('netElec:fetch', async (event, url, requestInfo) => {
+  if (!url || typeof url !== 'string') {
+    throw new Error('Invalid URL provided');
+  }
+  const parsed = new URL(url);
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('Unsupported protocol');
+  }
+  const response = await net.fetch(url, requestInfo);
+  const textData = await response.text();
+  const headersObj = {};
+  response.headers.forEach((val, key) => {
+    headersObj[key] = val;
+  });
+  return {
+    ok: response.ok,
+    status: response.status,
+    statusText: response.statusText,
+    headers: headersObj,
+    text: textData
+  };
 });
 
 ipcMain.handle("app:quit", () => {
@@ -514,7 +576,17 @@ ipcMain.handle("sibnet:parse", async (_, link) => {
 });
 
 ipcMain.handle("winApi:openLink", (_, link) => {
-  if (link) shell.openExternal(link);
+  if (!link || typeof link !== 'string') return false;
+  try {
+    const parsed = new URL(link);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      shell.openExternal(link);
+      return true;
+    }
+  } catch (e) {
+    console.error("Invalid link URL:", e);
+  }
+  return false;
 });
 
 ipcMain.handle("discordRPC:setActivity", (_, activity) => {
@@ -608,11 +680,11 @@ ipcMain.handle("debug:send", (_, { type, message, data }) => {
   sendDebugLog(type, message, data);
 });
 
-ipcMain.handle("shikimori:exchangeCode", async (_, { authCode, domain, clientId, clientSecret }) => {
+ipcMain.handle("shikimori:exchangeCode", async (_, { authCode, domain }) => {
   if (!authCode) return null;
 
-  const SHIKI_CLIENT_ID = clientId || process.env.SHIKIMORI_CLIENT_ID || '';
-  const SHIKI_CLIENT_SECRET = clientSecret || process.env.SHIKIMORI_CLIENT_SECRET || '';
+  const SHIKI_CLIENT_ID = process.env.SHIKIMORI_CLIENT_ID || '';
+  const SHIKI_CLIENT_SECRET = process.env.SHIKIMORI_CLIENT_SECRET || '';
   const SHIKI_REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob";
 
   try {
@@ -637,11 +709,11 @@ ipcMain.handle("shikimori:exchangeCode", async (_, { authCode, domain, clientId,
   }
 });
 
-ipcMain.handle("shikimori:refreshToken", async (_, { refreshToken, domain, clientId, clientSecret }) => {
+ipcMain.handle("shikimori:refreshToken", async (_, { refreshToken, domain }) => {
   if (!refreshToken) return null;
 
-  const SHIKI_CLIENT_ID = clientId || process.env.SHIKIMORI_CLIENT_ID || '';
-  const SHIKI_CLIENT_SECRET = clientSecret || process.env.SHIKIMORI_CLIENT_SECRET || '';
+  const SHIKI_CLIENT_ID = process.env.SHIKIMORI_CLIENT_ID || '';
+  const SHIKI_CLIENT_SECRET = process.env.SHIKIMORI_CLIENT_SECRET || '';
 
   try {
     const tokenUrl = `https://${domain || 'shikimori.io'}/oauth/token`;
@@ -742,18 +814,24 @@ ipcMain.handle("download:episode", async (event, { url, defaultFileName, referer
 
       const fileStream = fs.createWriteStream(filePath);
       const totalSegments = segments.length;
+      let downloadFailed = false;
 
       try {
         for (let i = 0; i < totalSegments; i++) {
           const segUrl = segments[i];
           const segRes = await net.fetch(segUrl, { headers });
-          if (segRes.ok) {
-            const reader = segRes.body.getReader();
+          if (!segRes.ok) {
+            throw new Error(`HTTP ${segRes.status} on segment ${i + 1}/${totalSegments}`);
+          }
+          const reader = segRes.body.getReader();
+          try {
             while (true) {
               const { done, value } = await reader.read();
               if (done) break;
               fileStream.write(value);
             }
+          } finally {
+            if (reader) reader.releaseLock?.();
           }
 
           if (event.sender) {
@@ -766,8 +844,16 @@ ipcMain.handle("download:episode", async (event, { url, defaultFileName, referer
             });
           }
         }
+      } catch (err) {
+        downloadFailed = true;
+        fileStream.destroy(err);
+        throw err;
       } finally {
-        fileStream.end();
+        if (!downloadFailed) {
+          fileStream.end();
+        } else if (!fileStream.destroyed) {
+          fileStream.destroy();
+        }
       }
       return { success: true, filePath };
     } else {
@@ -775,26 +861,39 @@ ipcMain.handle("download:episode", async (event, { url, defaultFileName, referer
       let downloadedBytes = 0;
 
       const fileStream = fs.createWriteStream(filePath);
-      const reader = res.body.getReader();
+      let streamFailed = false;
 
       try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          fileStream.write(value);
-          downloadedBytes += value.length;
-          if (totalBytes > 0 && event.sender) {
-            const percent = Math.round((downloadedBytes / totalBytes) * 100);
-            event.sender.send("download:progress", {
-              filePath,
-              downloadedBytes,
-              totalBytes,
-              percent
-            });
+        const reader = res.body.getReader();
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            fileStream.write(value);
+            downloadedBytes += value.length;
+            if (totalBytes > 0 && event.sender) {
+              const percent = Math.round((downloadedBytes / totalBytes) * 100);
+              event.sender.send("download:progress", {
+                filePath,
+                downloadedBytes,
+                totalBytes,
+                percent
+              });
+            }
           }
+        } finally {
+          if (reader) reader.releaseLock?.();
         }
+      } catch (err) {
+        streamFailed = true;
+        fileStream.destroy(err);
+        throw err;
       } finally {
-        fileStream.end();
+        if (!streamFailed) {
+          fileStream.end();
+        } else if (!fileStream.destroyed) {
+          fileStream.destroy();
+        }
       }
 
       return { success: true, filePath };

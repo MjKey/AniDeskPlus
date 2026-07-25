@@ -74,6 +74,7 @@
     let unsubFullscreen = null;
     let availableGPU = false;
     let sleepTimerLabel = "Выкл";
+    let activeEpisodeRequestId = 0;
 
     function getReleaseId() {
         return args?.release?.id || args?.id || null;
@@ -228,7 +229,7 @@
         }
     }
 
-    playerSettingsStore.subscribe((value) => {
+    let unsubPlayerSettings = playerSettingsStore.subscribe((value) => {
         playerSettings = {
             ...utils.playerDefaultSettings,
             ...(value || {}),
@@ -240,7 +241,7 @@
         utils.playingDefaultSettings,
     );
 
-    playingSettingsRaw.subscribe((value) => {
+    let unsubPlayingSettings = playingSettingsRaw.subscribe((value) => {
         playingSettings = value;
     });
 
@@ -249,7 +250,7 @@
         utils.upscaleDefaultSettings,
     );
 
-    upscaleSettingsRaw.subscribe((value) => {
+    let unsubUpscaleSettings = upscaleSettingsRaw.subscribe((value) => {
         upscaleSettings = value;
     });
 
@@ -325,8 +326,6 @@
         }
     }
 
-    document.addEventListener("mousemove", hideOnIdle);
-
     async function changeUpscale(enabled) {
         upscaleEnabled = enabled;
         await renderUpscale();
@@ -367,10 +366,12 @@
                 isFullscreen = isFs;
             });
         }
+        document.addEventListener("mousemove", hideOnIdle);
         init();
     });
 
     async function playVideo(episode) {
+        const requestId = ++activeEpisodeRequestId;
         const relId = getReleaseId();
         const prevEp = currentEpisode || args?.currentEpisode;
         if (video && video.duration && relId && prevEp) {
@@ -392,7 +393,7 @@
             case "Kodik":
                 let aQ = {};
                 const kLinks = await KodikParser.getDirectLinks(episode.url);
-                for (const [key, value] of Object.entries(kLinks)) {
+                for (const [key, value] of Object.entries(kLinks || {})) {
                     aQ[key] = {
                         src: value[0].src,
                     };
@@ -413,18 +414,21 @@
 
             case "Sibnet":
                 await utils.fallback(async () => {
-                    const link = await Sibnet.Parse(episode.url);
+                    const link = await (SibnetParser.getDirectLinks ? SibnetParser.getDirectLinks(episode.url) : SibnetParser.getDirectLink(episode.url));
                     if (!link) return false;
 
+                    const srcUrl = typeof link === 'string' ? link : (link["720"]?.src || link["720"]?.[0]?.src || link.src || link);
                     availableQuality = {
                         "720": {
-                            src: link,
+                            src: srcUrl,
                         },
                     };
                     return true;
                 }, 3);
                 break;
         }
+
+        if (requestId !== activeEpisodeRequestId) return;
 
         const url =
             availableQuality?.[String(playingSettings.defaultQuality)]?.src ??
@@ -441,8 +445,8 @@
             args.src = link;
         }
 
-        if (analytics) {
-            analytics.trackEvent("play_anime", {
+        if (typeof window !== 'undefined' && window.analytics) {
+            window.analytics.trackEvent("play_anime", {
                 source: source.name,
                 name: episode.name,
                 releaseTitle: args.release.title_ru,
@@ -559,8 +563,8 @@
 
         rememberPlaybackSelection(source);
 
-        if (analytics) {
-            analytics.trackEvent("play_anime", {
+        if (typeof window !== 'undefined' && window.analytics) {
+            window.analytics.trackEvent("play_anime", {
                 source: source.name,
                 name: args.currentEpisode.name,
                 releaseTitle: args.release.title_ru,
@@ -654,6 +658,15 @@
             }
         }
 
+        if (rpcManager) {
+            rpcManager.clear();
+            rpcManager.destroy();
+            rpcManager = null;
+        }
+
+        if (unsubPlayerSettings) unsubPlayerSettings();
+        if (unsubPlayingSettings) unsubPlayingSettings();
+        if (unsubUpscaleSettings) unsubUpscaleSettings();
         if (unsubFullscreen) unsubFullscreen();
         if (sleepTimerManager) sleepTimerManager.clear();
         if (hotkeyManager) hotkeyManager.detach();

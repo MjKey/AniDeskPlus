@@ -1,5 +1,5 @@
 <script>
-    import { createEventDispatcher } from "svelte";
+    import { createEventDispatcher, onDestroy } from "svelte";
     import utils from "../../utils";
 
     export let video = null;
@@ -12,9 +12,36 @@
 
     let showTimelineMouse = false;
     let mousePosPercent = 0;
+    let timelineContainerEl = null;
+
+    function handleWindowMouseMove(e) {
+        if (!timelineContainerEl) return;
+        const rect = timelineContainerEl.getBoundingClientRect();
+        const percent = (Math.min(Math.max(0, e.clientX - rect.x), rect.width) / rect.width) * 100;
+        mousePosPercent = percent;
+
+        if (isScrubbing && video && video.duration) {
+            video.currentTime = (video.duration / 100) * percent;
+            dispatch("scrub", {
+                time: video.currentTime,
+                formattedTime: utils.returnFormatedTime(video.currentTime),
+                percent,
+            });
+        }
+    }
+
+    function handleWindowMouseUp() {
+        if (isScrubbing) {
+            isScrubbing = false;
+            window.removeEventListener("mousemove", handleWindowMouseMove);
+            window.removeEventListener("mouseup", handleWindowMouseUp);
+            if (video) video.play();
+        }
+    }
 
     function timelineMouseMove(e) {
         const timelineContainer = e.currentTarget;
+        timelineContainerEl = timelineContainer;
         const rect = timelineContainer.getBoundingClientRect();
         const percent = (Math.min(Math.max(0, e.clientX - rect.x), rect.width) / rect.width) * 100;
         mousePosPercent = percent;
@@ -35,6 +62,7 @@
             video.pause();
 
             const timelineContainer = e.currentTarget;
+            timelineContainerEl = timelineContainer;
             const rect = timelineContainer.getBoundingClientRect();
             const percent = (Math.min(Math.max(0, e.clientX - rect.x), rect.width) / rect.width) * 100;
 
@@ -44,15 +72,20 @@
                 formattedTime: utils.returnFormatedTime(video.currentTime),
                 percent,
             });
+
+            window.addEventListener("mousemove", handleWindowMouseMove);
+            window.addEventListener("mouseup", handleWindowMouseUp);
         }
     }
 
     function timelineMouseUp() {
-        if (isScrubbing) {
-            isScrubbing = false;
-            if (video) video.play();
-        }
+        handleWindowMouseUp();
     }
+
+    onDestroy(() => {
+        window.removeEventListener("mousemove", handleWindowMouseMove);
+        window.removeEventListener("mouseup", handleWindowMouseUp);
+    });
 </script>
 
 <div class="middle-content container flex-row">

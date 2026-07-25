@@ -30,6 +30,10 @@
     const release = anixApi.release.info(args.id, true);
 
     release.then((data) => {
+        if (data && data.release) {
+            favoriteCount = data.release.favorites_count;
+            isFavorite = data.release.is_favorite;
+        }
         discordRPC.setActivity({
             type: 3,
             state: "На странице релиза",
@@ -45,7 +49,7 @@
                 { label: "Ссылка на клиент", url: "https://github.com/MjKey/AniDeskPlus" },
             ],
         });
-    });
+    }).catch((e) => console.error("Error loading release:", e));
 
     let showSelectEpisodeModal,
         showCommentsModal,
@@ -93,8 +97,6 @@
     {#if r.release == null || r.code == 2}
         <NotFound />
     {:else}
-        {setFavoriteCount(r.release.favorites_count)}
-        {changeFavorite(r.release.is_favorite)}
         {#key modalSubTitle}
             <MetaInfo
                 subTitle={modalSubTitle === null

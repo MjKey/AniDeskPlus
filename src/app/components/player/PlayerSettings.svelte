@@ -314,10 +314,11 @@
         width: 250px;
         border-radius: 15px;
         display: flex;
-        flex-direction: row;
-        align-items: center;
+        flex-direction: column;
+        align-items: stretch;
         overflow: hidden;
         position: relative;
+        min-height: 320px;
     }
 
     .btn-title {
@@ -325,9 +326,12 @@
     }
 
     .page {
-        width: 250px !important;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100% !important;
         height: 100% !important;
-        min-width: 250px !important;
+        box-sizing: border-box;
         display: flex;
         flex-direction: column;
     }
