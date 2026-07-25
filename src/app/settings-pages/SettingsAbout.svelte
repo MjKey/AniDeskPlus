@@ -12,6 +12,15 @@
         if (window.prc?.getVersions) {
             versionInfo = await window.prc.getVersions();
         }
+        if (window.updater?.onStatus) {
+            const unsub = window.updater.onStatus((statusData) => {
+                updateStatus = statusData;
+                if (statusData.status !== "checking") {
+                    isChecking = false;
+                }
+            });
+            return unsub;
+        }
     });
 
     async function checkUpdates() {
@@ -21,23 +30,8 @@
 
         try {
             const res = await window.updater.check();
-            if (res.status === "update_available") {
-                updateStatus = {
-                    status: "available",
-                    text: `Доступно обновление v${res.latestVersion}!`,
-                    url: res.releaseUrl || "https://github.com/MjKey/AniDeskPlus/releases"
-                };
-            } else if (res.status === "latest") {
-                updateStatus = {
-                    status: "latest",
-                    text: `У вас установлена последняя версия (v${res.currentVersion || versionInfo?.anidesk || ""})`
-                };
-            } else {
-                updateStatus = {
-                    status: "error",
-                    text: "Не удалось проверить обновления.",
-                    url: "https://github.com/MjKey/AniDeskPlus/releases"
-                };
+            if (res) {
+                updateStatus = res;
             }
         } catch (e) {
             updateStatus = {
@@ -46,7 +40,9 @@
                 url: "https://github.com/MjKey/AniDeskPlus/releases"
             };
         } finally {
-            isChecking = false;
+            if (updateStatus?.status !== "checking") {
+                isChecking = false;
+            }
         }
     }
 </script>
@@ -83,9 +79,21 @@
                     <span>{isChecking ? "Проверка..." : "Проверить обновления"}</span>
                 </button>
                 {#if updateStatus}
-                    <div class="update-status-text flex-column" class:success={updateStatus.status === 'latest'} class:available={updateStatus.status === 'available'}>
-                        <span>{updateStatus.text}</span>
-                        {#if updateStatus.url}
+                    <div
+                        class="update-status-badge flex-column"
+                        class:status-checking={updateStatus.status === 'checking'}
+                        class:status-downloading={updateStatus.status === 'downloading'}
+                        class:status-downloaded={updateStatus.status === 'downloaded'}
+                        class:status-latest={updateStatus.status === 'latest'}
+                        class:status-available={updateStatus.status === 'available'}
+                        class:status-error={updateStatus.status === 'error'}
+                    >
+                        <span class="update-status-text">{updateStatus.text || "Проверка завершена"}</span>
+                        {#if updateStatus.status === 'downloaded'}
+                            <button class="install-btn" onclick={() => window.updater.install()}>
+                                ⚡ Перезапустить и установить
+                            </button>
+                        {:else if updateStatus.url}
                             <button class="open-release-btn" onclick={() => winApi.openLink(updateStatus.url)}>
                                 Открыть страницу релизов ↗
                             </button>
@@ -118,8 +126,8 @@
                         >
                             <Icon
                                 src={githubLogo}
+                                size={{ width: 30, height: 30 }}
                                 varColor="--main-text-color"
-                                size={{ width: 35, height: 35 }}
                             />
                         </button>
                     </div>

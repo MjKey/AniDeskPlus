@@ -74,53 +74,113 @@ class SettingsManager {
 const settingsManager = new SettingsManager(SettingsPath, DefaultSettings);
 const SettingsFirst = settingsManager.getAll();
 
-if (app.isPackaged && SettingsFirst.AutoUpdate) {
-  autoUpdater.on("checking-for-update", () => {
-    if (isDebugMode) console.log("[DEBUG] Checking for updates...");
-  });
+let updateStatusCache = { status: 'idle', currentVersion: app.getVersion() };
 
-  autoUpdater.on("update-available", () => {
-    if (isDebugMode) console.log("[DEBUG] Update available");
-  });
+function broadcastUpdaterStatus(statusData) {
+  updateStatusCache = { ...statusData, currentVersion: app.getVersion() };
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('updater:status', updateStatusCache);
+  }
+}
 
-  autoUpdater.on("update-not-available", () => {
-    if (isDebugMode) console.log("[DEBUG] Update not available");
-  });
+async function checkForUpdatesGitHub() {
+  const currentVersion = app.getVersion();
+  try {
+    const res = await net.fetch("https://api.github.com/repos/MjKey/AniDeskPlus/releases/latest", {
+      headers: { "User-Agent": "AniDeskPlusApp" }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const latestTag = (data.tag_name || "").replace(/^v/, "").trim();
+      const cleanCurrent = (currentVersion || "").replace(/^v/, "").trim();
+      const isNewer = compareVersions(latestTag, cleanCurrent) > 0;
+      return {
+        status: isNewer ? "available" : "latest",
+        latestVersion: latestTag,
+        currentVersion: cleanCurrent,
+        releaseUrl: data.html_url || "https://github.com/MjKey/AniDeskPlus/releases",
+        text: isNewer ? `Доступно обновление v${latestTag}!` : `У вас установлена последняя версия (v${cleanCurrent})`
+      };
+    }
+  } catch (e) {
+    console.error("GitHub release check error:", e);
+    return { status: "error", text: "Ошибка при проверке обновлений.", currentVersion };
+  }
+  return { status: "latest", currentVersion };
+}
 
-  autoUpdater.on('error', (message) => {
-    console.error('AutoUpdater error:', message);
-  });
+function initAutoUpdater() {
+  if (!SettingsFirst.AutoUpdate) return;
 
-  autoUpdater.on('update-downloaded', (event, releaseNotes, releaseName) => {
-    const dialogOpts = {
-      type: 'info',
-      buttons: ['Перезапустить', 'Позже'],
-      title: 'Обновление AniDeskPlus',
-      message: process.platform === 'win32' ? releaseNotes : releaseName,
-      detail: 'Новая версия скачана, перезапустите приложение для установки.'
-    };
+  if (app.isPackaged) {
+    autoUpdater.on("checking-for-update", () => {
+      if (isDebugMode) console.log("[DEBUG] Squirrel checking for updates...");
+      broadcastUpdaterStatus({ status: "checking", text: "Проверка обновлений..." });
+    });
 
-    dialog.showMessageBox(dialogOpts).then((returnValue) => {
-      if (returnValue.response === 0) {
-        isQuitting = true;
-        autoUpdater.quitAndInstall();
+    autoUpdater.on("update-available", () => {
+      if (isDebugMode) console.log("[DEBUG] Squirrel update available - downloading");
+      broadcastUpdaterStatus({ status: "downloading", text: "Найдено обновление! Идет фоновая загрузка..." });
+    });
+
+    autoUpdater.on("update-not-available", () => {
+      if (isDebugMode) console.log("[DEBUG] Squirrel update not available");
+      broadcastUpdaterStatus({ status: "latest", text: `У вас установлена последняя версия (v${app.getVersion()})` });
+    });
+
+    autoUpdater.on('error', async (err) => {
+      if (isDebugMode) console.log('[DEBUG] Squirrel AutoUpdater error, falling back to GitHub API:', err?.message || err);
+      const ghStatus = await checkForUpdatesGitHub();
+      broadcastUpdaterStatus(ghStatus);
+    });
+
+    autoUpdater.on('update-downloaded', (event, releaseNotes, releaseName) => {
+      if (isDebugMode) console.log("[DEBUG] Squirrel update downloaded");
+      broadcastUpdaterStatus({
+        status: "downloaded",
+        text: "Обновление скачано и готово к установке!",
+        releaseNotes,
+        releaseName
+      });
+
+      const dialogOpts = {
+        type: 'info',
+        buttons: ['Перезапустить и обновить', 'Позже'],
+        title: 'Обновление AniDeskPlus',
+        message: process.platform === 'win32' ? (releaseName || 'Новая версия готова!') : releaseName,
+        detail: 'Новая версия успешно скачана. Перезапустить приложение сейчас для установки?'
+      };
+
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        dialog.showMessageBox(mainWindow, dialogOpts).then((returnValue) => {
+          if (returnValue.response === 0) {
+            isQuitting = true;
+            autoUpdater.quitAndInstall();
+          }
+        });
       }
     });
-  });
 
-  try {
-    autoUpdater.setFeedURL({ url: feed });
-    setTimeout(() => {
-      try {
-        if (isDebugMode) console.log("[DEBUG] Triggering autoUpdater.checkForUpdates()");
-        autoUpdater.checkForUpdates();
-      } catch (e) {
-        console.error("AutoUpdater check error:", e);
-      }
-    }, 5000);
-  } catch (e) {
-    console.error("AutoUpdater setup error:", e);
+    try {
+      autoUpdater.setFeedURL({ url: feed });
+    } catch (e) {
+      console.error("AutoUpdater setFeedURL error:", e);
+    }
   }
+
+  setTimeout(async () => {
+    try {
+      if (app.isPackaged) {
+        autoUpdater.checkForUpdates();
+      } else {
+        const status = await checkForUpdatesGitHub();
+        broadcastUpdaterStatus(status);
+      }
+    } catch (e) {
+      const status = await checkForUpdatesGitHub();
+      broadcastUpdaterStatus(status);
+    }
+  }, 5000);
 }
 
 const isFirstInstance = app.requestSingleInstanceLock();
@@ -358,6 +418,7 @@ app.on('ready', () => {
   if (isDebugMode) {
     createDebugWindow();
   }
+  initAutoUpdater();
 });
 
 app.on('window-all-closed', function () {
@@ -509,37 +570,33 @@ function compareVersions(v1, v2) {
 }
 
 ipcMain.handle("updater:check", async (_) => {
-  const currentVersion = app.getVersion();
-  if (app.isPackaged && autoUpdater) {
+  broadcastUpdaterStatus({ status: "checking", text: "Проверка обновлений..." });
+
+  if (app.isPackaged) {
     try {
       autoUpdater.checkForUpdates();
+      return updateStatusCache;
     } catch (e) {
-      console.error("AutoUpdater error:", e);
+      console.error("Squirrel check error, fallback to GitHub:", e);
     }
   }
 
-  try {
-    const res = await net.fetch("https://api.github.com/repos/MjKey/AniDeskPlus/releases/latest", {
-      headers: { "User-Agent": "AniDeskPlusApp" }
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const latestTag = (data.tag_name || "").replace(/^v/, "").trim();
-      const cleanCurrent = (currentVersion || "").replace(/^v/, "").trim();
-      const isNewer = compareVersions(latestTag, cleanCurrent) > 0;
-      return {
-        status: isNewer ? "update_available" : "latest",
-        latestVersion: latestTag,
-        currentVersion: cleanCurrent,
-        releaseUrl: data.html_url || "https://github.com/MjKey/AniDeskPlus/releases"
-      };
-    }
-  } catch (e) {
-    console.error("GitHub release check error:", e);
-    return { status: "error", message: e.message, currentVersion };
-  }
+  const ghStatus = await checkForUpdatesGitHub();
+  broadcastUpdaterStatus(ghStatus);
+  return ghStatus;
+});
 
-  return { status: "latest", currentVersion };
+ipcMain.handle("updater:install", async (_) => {
+  if (app.isPackaged) {
+    try {
+      isQuitting = true;
+      autoUpdater.quitAndInstall();
+      return true;
+    } catch (e) {
+      console.error("quitAndInstall error:", e);
+    }
+  }
+  return false;
 });
 
 ipcMain.handle("debug:send", (_, { type, message, data }) => {

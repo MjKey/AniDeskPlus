@@ -80,4 +80,10 @@ contextBridge.exposeInMainWorld('settings', {
 
 contextBridge.exposeInMainWorld('updater', {
   check: () => ipcRenderer.invoke('updater:check'),
+  install: () => ipcRenderer.invoke('updater:install'),
+  onStatus: (callback) => {
+    const handler = (_, status) => callback(status);
+    ipcRenderer.on('updater:status', handler);
+    return () => ipcRenderer.removeListener('updater:status', handler);
+  }
 });
