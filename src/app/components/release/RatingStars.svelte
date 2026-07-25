@@ -8,7 +8,19 @@
     let hoveredVote = 0;
     let isLoading = false;
 
-    $: numericMyVote = Number(myVote) || 0;
+    function parseVoteValue(val) {
+        if (typeof val === "number") return val;
+        if (typeof val === "string") {
+            const parsed = parseInt(val, 10);
+            return isNaN(parsed) ? 0 : parsed;
+        }
+        if (typeof val === "object" && val !== null) {
+            return parseVoteValue(val.vote ?? val.value ?? val.grade ?? val.position);
+        }
+        return 0;
+    }
+
+    $: numericMyVote = parseVoteValue(myVote);
 
     async function setVote(voteVal) {
         if (!anixApi.client.token) {
