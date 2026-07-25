@@ -486,21 +486,24 @@
             loadedPercent = percent;
         });
 
-        await volumeManager.loadPersistedVolume();
-        const initialVol = volumeManager.getInitialVolume(playerSettings, utils.playerDefaultSettings);
-        video.volume = initialVol;
-
-        volControl = await waitForElm("#volume-position");
-        volPercent = volumeManager.setVolume(video.volume, video, volControl, playerSettings, persistPlayerSettings, true);
-
-        volControl.oninput = () => {
-            handleSetVolume(volControl.value);
+        const syncDuration = () => {
+            if (video && video.duration && !isNaN(video.duration) && video.duration > 0) {
+                durationTime = utils.returnFormatedTime(video.duration);
+            }
         };
 
         video.onloadedmetadata = () => {
             loading = true;
-            durationTime = utils.returnFormatedTime(video.duration);
+            syncDuration();
             tryRestoreWatchPosition();
+        };
+
+        video.ondurationchange = () => {
+            syncDuration();
+        };
+
+        video.oncanplay = () => {
+            syncDuration();
         };
 
         video.onwaiting = () => {
@@ -509,6 +512,7 @@
 
         video.onplaying = () => {
             loading = false;
+            syncDuration();
             tryRestoreWatchPosition();
         };
 
@@ -522,7 +526,7 @@
             const triggered = await sleepTimerManager.onEpisodeEnd();
             if (triggered) return;
 
-            if (playerSettings.autoplayEpisode) {
+            if (playerSettings?.autoplayEpisode) {
                 let e = args.episodes.find(
                     (x) => x.position == currentEpisode.position + 1,
                 );
@@ -538,6 +542,9 @@
             if (!video || !video.duration) return;
             currentTime = utils.returnFormatedTime(video.currentTime);
             progressPercent = (video.currentTime / video.duration) * 100;
+            if (durationTime === "0:00" || durationTime === "00:00") {
+                syncDuration();
+            }
 
             tryRestoreWatchPosition();
             trySaveWatchPosition();
@@ -553,8 +560,36 @@
         video.onplay = () => {
             isPaused = false;
             loading = false;
+            syncDuration();
             if (rpcManager) rpcManager.setPlaying(currentEpisode.name, video.currentTime, video.duration);
         };
+
+        // Start loading the stream immediately before non-critical UI awaits
+        if (!args.src || args.src === "https:undefined" || args.src === "undefined") {
+            if (currentEpisode) {
+                playVideo(currentEpisode);
+            }
+        } else {
+            hlsManager.loadSource(args.src, true);
+        }
+
+        // Initialize non-blocking UI controls & integrations asynchronously
+        (async () => {
+            try {
+                await volumeManager.loadPersistedVolume();
+                const initialVol = volumeManager.getInitialVolume(playerSettings, utils.playerDefaultSettings);
+                video.volume = initialVol;
+
+                volControl = await waitForElm("#volume-position");
+                volPercent = volumeManager.setVolume(video.volume, video, volControl, playerSettings, persistPlayerSettings, true);
+
+                volControl.oninput = () => {
+                    handleSetVolume(volControl.value);
+                };
+            } catch (e) {
+                console.error("[Player] Volume init error:", e);
+            }
+        })();
 
         let source =
             typeof args.currentEpisode.source == "number"
@@ -630,13 +665,8 @@
 
         updateSkipTimes();
 
-        if (availableGPU) await renderUpscale();
-        if (!args.src || args.src === "https:undefined" || args.src === "undefined") {
-            if (currentEpisode) {
-                await playVideo(currentEpisode);
-            }
-        } else {
-            hlsManager.loadSource(args.src, true);
+        if (availableGPU) {
+            renderUpscale().catch((e) => console.error("[Player] Upscale init error:", e));
         }
 
         if (rpcManager) {

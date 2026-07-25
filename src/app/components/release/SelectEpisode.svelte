@@ -361,7 +361,8 @@
                     {@render baseCard(d, async () => {
                         let availableQuality, link;
 
-                        switch (currentSourceName) {
+                        const sourceName = d.source?.name || d.source?.type?.name || currentSourceName || "Kodik";
+                        switch (sourceName) {
                             case "Kodik":
                                 let aQ = {};
                                 const kLinks = await KodikParser.getDirectLinks(
