@@ -442,7 +442,7 @@
 
         args.availableQuality = availableQuality || {};
         if (url) {
-            link = `${URL.canParse(url) ? url : `https:${url}`}`;
+            link = url.startsWith('//') ? `https:${url}` : url;
             hlsManager.loadSource(link, true);
             args.src = link;
         }

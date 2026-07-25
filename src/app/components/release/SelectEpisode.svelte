@@ -432,7 +432,7 @@
                             });
                         }
 
-                        const finalSrc = url ? (URL.canParse(url) ? url : `https:${url}`) : "";
+                        const finalSrc = url ? (url.startsWith('//') ? `https:${url}` : url) : "";
 
                         updateViewportComponent(11, {
                             src: finalSrc,
