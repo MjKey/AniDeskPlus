@@ -99,3 +99,18 @@ contextBridge.exposeInMainWorld('episodeDownloader', {
     return () => ipcRenderer.removeListener('download:progress', handler);
   }
 });
+
+contextBridge.exposeInMainWorld('togetherAPI', {
+  onDeepLink: (callback) => {
+    const handler = (_, payload) => callback(payload);
+    ipcRenderer.on('together:deep-link', handler);
+    return () => ipcRenderer.removeListener('together:deep-link', handler);
+  },
+  startLanDiscovery: (options) => ipcRenderer.invoke('together:lan-start', options),
+  stopLanDiscovery: () => ipcRenderer.invoke('together:lan-stop'),
+  onLanPeerDiscovered: (callback) => {
+    const handler = (_, peer) => callback(peer);
+    ipcRenderer.on('together:lan-peer-found', handler);
+    return () => ipcRenderer.removeListener('together:lan-peer-found', handler);
+  }
+});

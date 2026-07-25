@@ -9,12 +9,26 @@
     import BaseAltButton from "../components/buttons/BaseAltButton.svelte";
     import AuthPlaceholder from "./AuthPlaceholder.svelte";
     import MetaInfo from "../components/gui/MetaInfo.svelte";
+    import RoomModal from "../components/together/RoomModal.svelte";
+    import { togetherStore } from "../components/stores/togetherStore.js";
 
     let uid;
     let page = 0;
     let allData = [];
     let updateInfo = false;
     let maxPages = 0;
+    let showRoomModal = false;
+
+    function handleWatchTogether(e, friend) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        const roomCode = 'TOG-' + Math.random().toString(36).substring(2, 7).toUpperCase();
+        const deepLink = `anideskplus://together/join?room=${roomCode}`;
+        navigator.clipboard?.writeText(deepLink).catch(() => {});
+        togetherStore.createRoom(roomCode, {
+            name: friend?.profile?.login || 'Friend'
+        });
+        showRoomModal = true;
+    }
 
     const user_id = localStorageWritable("user_token", null);
     user_id.subscribe((value) => (uid = JSON.parse(value)?.id));
@@ -166,7 +180,19 @@
                         hideFriendRequest(f);
                     }}
                 ></BaseAltButton>
-            {:else if type === "out"}{:else}{/if}
+            {:else if type === "out"}{:else}
+                <BaseAltButton
+                    btnType="primary"
+                    text="Смотреть вместе"
+                    btnWidth="160px"
+                    btnHeight="40px"
+                    dropShadow={true}
+                    font={{ weight: 500 }}
+                    onClickCallback={(e) => {
+                        handleWatchTogether(e, f);
+                    }}
+                ></BaseAltButton>
+            {/if}
         </div>
     </button>
 {/snippet}
@@ -234,6 +260,8 @@
 {:else}
     <AuthPlaceholder />
 {/if}
+
+<RoomModal bind:showed={showRoomModal} />
 
 <style>
     .friends-page {

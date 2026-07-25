@@ -55,7 +55,8 @@
     "anixartjs": "^0.1.8",
     "electron-serve": "^3.0.1",
     "electron-squirrel-startup": "^1.0.1",
-    "openurl": "^1.1.1"
+    "openurl": "^1.1.1",
+    "pako": "^3.0.1"
   },
   "allowScripts": {
     "electron@43.1.1": true

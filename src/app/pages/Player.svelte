@@ -21,6 +21,15 @@
     import { HotkeyManager } from "../components/stores/hotkeyManager.js";
     import { UpscaleRenderer } from "../components/stores/upscaleRenderer.js";
 
+    // AniTogether components and services
+    import TogetherOverlay from "../components/together/TogetherOverlay.svelte";
+    import TogetherChat from "../components/together/TogetherChat.svelte";
+    import FloatingReactions from "../components/together/FloatingReactions.svelte";
+    import RoomModal from "../components/together/RoomModal.svelte";
+    import { P2PClient } from "../components/together/P2PClient.js";
+    import { SyncEngine } from "../components/together/SyncEngine.js";
+    import { togetherStore, joinRoom } from "../components/stores/togetherStore.js";
+
     // Manager instances
     let hlsManager = new HlsManager();
     let volumeManager = new VolumeManager();
@@ -28,6 +37,12 @@
     let sleepTimerManager = null;
     let hotkeyManager = null;
     let upscaleRenderer = null;
+    let p2pClient = null;
+    let syncEngine = null;
+
+    let isChatOpen = false;
+    let showTogetherRoomModal = false;
+    let unsubDeepLink = null;
 
     let currentTime = "0:00";
     let durationTime = "0:00";
@@ -576,6 +591,31 @@
         mainDiv = await waitForElm(".anidesk-player");
         video = await waitForElm(".player-video");
 
+        // Initialize AniTogether P2P client & SyncEngine
+        p2pClient = new P2PClient();
+        syncEngine = new SyncEngine(p2pClient, { videoElement: video });
+
+        const currentTogetherState = $togetherStore;
+        if (currentTogetherState.roomCode && p2pClient.state === 'disconnected') {
+            p2pClient.connect(currentTogetherState.roomCode, currentTogetherState.isHost);
+        }
+
+        if (typeof window !== "undefined" && window.togetherAPI?.onDeepLink) {
+            unsubDeepLink = window.togetherAPI.onDeepLink((payload) => {
+                const link = typeof payload === "string" ? payload : (payload?.url || payload?.link || "");
+                if (link.includes("together/join") || link.includes("room=")) {
+                    const match = link.match(/room=([A-Za-z0-9_-]+)/);
+                    if (match && match[1]) {
+                        const roomCode = match[1];
+                        joinRoom(roomCode);
+                        if (p2pClient) {
+                            p2pClient.connect(roomCode, false);
+                        }
+                    }
+                }
+            });
+        }
+
         hlsManager.init(video, (percent) => {
             loadedPercent = percent;
         });
@@ -796,6 +836,18 @@
         if (unsubPlayingSettings) unsubPlayingSettings();
         if (unsubUpscaleSettings) unsubUpscaleSettings();
         if (unsubFullscreen) unsubFullscreen();
+        if (unsubDeepLink) {
+            unsubDeepLink();
+            unsubDeepLink = null;
+        }
+        if (syncEngine) {
+            syncEngine.destroy();
+            syncEngine = null;
+        }
+        if (p2pClient) {
+            p2pClient.disconnect();
+            p2pClient = null;
+        }
         if (sleepTimerManager) sleepTimerManager.clear();
         if (hotkeyManager) hotkeyManager.detach();
         if (hlsManager) hlsManager.destroy();
@@ -874,6 +926,25 @@
         {performRestartVideo}
         {performSkipOp}
         {performSkipEd}
+    />
+
+    <TogetherOverlay
+        {p2pClient}
+        onToggleChat={() => (isChatOpen = !isChatOpen)}
+        onOpenSdpModal={() => (showTogetherRoomModal = true)}
+    />
+
+    <TogetherChat
+        {p2pClient}
+        bind:isOpen={isChatOpen}
+        onClose={() => (isChatOpen = false)}
+    />
+
+    <FloatingReactions />
+
+    <RoomModal
+        bind:showed={showTogetherRoomModal}
+        {p2pClient}
     />
 
     {#if loading}

@@ -4,11 +4,20 @@ if (require('electron-squirrel-startup')) {
   process.exit(0);
 }
 const path = require('node:path');
+const dgram = require('dgram');
 const o = require('openurl');
 const serve = require('electron-serve').default;
 const loadURL = serve({ directory: './public' });
 const fs = require('fs');
 const rpc = require("@xhayper/discord-rpc");
+
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient('anideskplus', process.execPath, [path.resolve(process.argv[1])]);
+  }
+} else {
+  app.setAsDefaultProtocolClient('anideskplus');
+}
 
 function loadEnv() {
   const envPath = path.join(__dirname, '..', '.env');
@@ -215,19 +224,78 @@ function initAutoUpdater() {
   }, 5000);
 }
 
+let pendingDeepLinkPayload = null;
+
+function parseDeepLinkUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== 'string') return null;
+  const urlStr = rawUrl.trim().replace(/^"+|"+$/g, '');
+  if (!urlStr.toLowerCase().startsWith('anideskplus://')) return null;
+
+  try {
+    const parsed = new URL(urlStr);
+    const roomCode = parsed.searchParams.get('room') || 
+                     parsed.searchParams.get('roomCode') || 
+                     parsed.searchParams.get('code');
+    if (roomCode) {
+      return { roomCode, action: 'join' };
+    }
+  } catch (e) {
+    // URL constructor failed, fallback to regex
+  }
+
+  const match = urlStr.match(/(?:room|roomCode|code)=([A-Za-z0-9_-]+)/i);
+  if (match && match[1]) {
+    return { roomCode: match[1], action: 'join' };
+  }
+
+  return null;
+}
+
+function handleDeepLinkUrl(urlStr) {
+  const payload = parseDeepLinkUrl(urlStr);
+  if (!payload) return false;
+
+  if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isLoading()) {
+    mainWindow.webContents.send('together:deep-link', payload);
+  } else {
+    pendingDeepLinkPayload = payload;
+  }
+  return true;
+}
+
+function checkCommandLineForDeepLink(argv) {
+  if (!Array.isArray(argv)) return;
+  for (const arg of argv) {
+    if (typeof arg === 'string' && arg.toLowerCase().startsWith('anideskplus://')) {
+      if (handleDeepLinkUrl(arg)) break;
+    }
+  }
+}
+
 const isFirstInstance = app.requestSingleInstanceLock();
 
 if (!isFirstInstance) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
+  app.on('second-instance', (event, commandLine) => {
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.show();
       mainWindow.focus();
     }
+    checkCommandLineForDeepLink(commandLine);
   });
 }
+
+app.on('open-url', (event, urlStr) => {
+  event.preventDefault();
+  handleDeepLinkUrl(urlStr);
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  }
+});
 
 const discordRpcClient = new rpc.Client({ clientId: rpcClientId });
 
@@ -400,8 +468,19 @@ function createWindow() {
     mainWindow.webContents.send('fullscreen:changed', false);
   });
 
+  mainWindow.webContents.on('did-finish-load', () => {
+    if (pendingDeepLinkPayload && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('together:deep-link', pendingDeepLinkPayload);
+      pendingDeepLinkPayload = null;
+    }
+  });
+
   mainWindow.once('ready-to-show', async () => {
     mainWindow.show();
+    if (pendingDeepLinkPayload && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('together:deep-link', pendingDeepLinkPayload);
+      pendingDeepLinkPayload = null;
+    }
   });
 
   mainWindow.webContents.session.webRequest.onBeforeSendHeaders(
@@ -447,6 +526,7 @@ app.on('ready', () => {
   if (process.platform === 'win32') {
     app.setAppUserModelId('com.mjkey.anideskplus');
   }
+  checkCommandLineForDeepLink(process.argv);
   createTray();
   createWindow();
   if (isDebugMode) {
@@ -457,6 +537,7 @@ app.on('ready', () => {
 
 app.on('before-quit', () => {
   isQuitting = true;
+  stopLanDiscoveryInternal();
   if (tray) {
     tray.destroy();
     tray = null;
@@ -902,4 +983,121 @@ ipcMain.handle("download:episode", async (event, { url, defaultFileName, referer
     console.error("Episode download error:", e);
     return { success: false, error: e.message };
   }
+});
+
+let lanSocket = null;
+let lanAnnounceInterval = null;
+let currentLanParams = null;
+
+function stopLanDiscoveryInternal() {
+  if (lanAnnounceInterval) {
+    clearInterval(lanAnnounceInterval);
+    lanAnnounceInterval = null;
+  }
+  if (lanSocket) {
+    try {
+      lanSocket.removeAllListeners();
+      lanSocket.close();
+    } catch (e) {
+      console.error('Error closing LAN socket:', e);
+    }
+    lanSocket = null;
+  }
+  currentLanParams = null;
+}
+
+function startLanDiscoveryInternal({ roomCode, peerId, nickname }) {
+  stopLanDiscoveryInternal();
+
+  currentLanParams = { roomCode, peerId, nickname };
+
+  const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+  lanSocket = socket;
+
+  socket.on('error', (err) => {
+    if (isDebugMode) console.error('LAN Discovery socket error:', err);
+  });
+
+  socket.on('message', (msg, rinfo) => {
+    try {
+      const data = JSON.parse(msg.toString('utf-8'));
+      if (data && data.type === 'TOGETHER_LAN_ANNOUNCE') {
+        if (data.peerId && data.peerId === peerId) {
+          return;
+        }
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('together:lan-peer-found', {
+            ...data,
+            address: rinfo.address
+          });
+        }
+      }
+    } catch (e) {
+      // ignore invalid messages
+    }
+  });
+
+  socket.bind(49494, () => {
+    try {
+      socket.setBroadcast(true);
+    } catch (e) {
+      if (isDebugMode) console.error('Failed to set socket broadcast:', e);
+    }
+
+    const sendAnnouncement = () => {
+      if (!lanSocket || !currentLanParams) return;
+      const announcement = JSON.stringify({
+        type: 'TOGETHER_LAN_ANNOUNCE',
+        roomCode: currentLanParams.roomCode,
+        peerId: currentLanParams.peerId,
+        nickname: currentLanParams.nickname || '',
+        port: 49494,
+        timestamp: Date.now()
+      });
+      const messageBuffer = Buffer.from(announcement);
+      try {
+        socket.send(messageBuffer, 0, messageBuffer.length, 49494, '255.255.255.255', (err) => {
+          if (err && isDebugMode) {
+            console.error('LAN announcement send error:', err);
+          }
+        });
+      } catch (err) {
+        if (isDebugMode) {
+          console.error('LAN announcement exception:', err);
+        }
+      }
+    };
+
+    sendAnnouncement();
+    lanAnnounceInterval = setInterval(sendAnnouncement, 3000);
+  });
+}
+
+ipcMain.handle('together:lan-start', (_, options) => {
+  if (!options || typeof options !== 'object') {
+    return { success: false, error: 'Invalid options' };
+  }
+  try {
+    startLanDiscoveryInternal(options);
+    return { success: true };
+  } catch (err) {
+    console.error('Failed to start LAN discovery:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('together:lan-stop', () => {
+  try {
+    stopLanDiscoveryInternal();
+    return { success: true };
+  } catch (err) {
+    console.error('Failed to stop LAN discovery:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('together:get-pending-deep-link', () => {
+  const payload = pendingDeepLinkPayload;
+  pendingDeepLinkPayload = null;
+  return payload;
 });
