@@ -59,8 +59,11 @@ function saveLibrary(lib) {
 
 // ── active downloads registry ────────────────────────────────────────────────
 const activeDownloads = {};
+let isDownloaderInitialized = false;
 
 function initDownloader(mainWindow) {
+    if (isDownloaderInitialized) return;
+    isDownloaderInitialized = true;
 
     ipcMain.handle("offline:getLibrary", () => getLibrary());
 

@@ -550,8 +550,6 @@ function createWindow() {
     mainWindow.show();
   });
 
-  initDownloader(mainWindow);
-
   mainWindow.webContents.session.webRequest.onBeforeRequest(
     { urls: ['*://*/*'] },
     (details, callback) => {
