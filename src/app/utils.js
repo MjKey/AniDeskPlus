@@ -1,4 +1,4 @@
-import defaultAppSettings from '../shared/defaultSettings.json';
+import defaultAppSettings from '../shared/defaultSettings.json' with { type: 'json' };
 
 /**
  * Набор всяких вспомогательных функций
@@ -21,6 +21,7 @@ export default {
         autoSkipEnding: false,
         showSkipButtons: true,
         defaultAspectRatio: "16-9",
+        defaultPlaybackRate: 1.0,
         saveUserVolume: {
             enabled: false,
             lastValue: null
@@ -108,6 +109,7 @@ export default {
         { label: "16:9", value: "16-9" },
         { label: "4:3", value: "4-3" },
         { label: "Fit", value: "fit" },
+        { label: "Оригинальное", value: "original" },
     ],
 
     playerSpeedValues: [

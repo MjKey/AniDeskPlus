@@ -16,4 +16,6 @@ export const Pages = Object.freeze({
     LOGIN:           10,
     PLAYER:          11,
     COLLECTION:      12,
+    OFFLINE:         13,
+    OFFLINE_RELEASE: 14,
 });

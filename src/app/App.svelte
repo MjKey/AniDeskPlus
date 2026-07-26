@@ -69,10 +69,10 @@
         type: 3,
         state: "Ожидание...",
         largeImageKey: "anidesk-transparent",
-        largeImageText: "AniDeskPlus - Anixart Client",
+        largeImageText: "AniXFlow - Anixart Client",
         instance: true,
         buttons: [
-            { label: "Ссылка на клиент", url: "https://github.com/MjKey/AniDeskPlus" },
+            { label: "Ссылка на клиент", url: "https://github.com/MjKey/AniXFlow" },
         ],
     });
 

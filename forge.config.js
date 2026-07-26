@@ -5,9 +5,9 @@ const package = require('./package.json');
 module.exports = {
   packagerConfig: {
     asar: true,
-    appBundleId: "com.mjkey.anideskplus",
-    name: "AniDeskPlus",
-    appCopyright: "AniDeskPlus",
+    appBundleId: "com.mjkey.anixflow",
+    name: "AniXFlow",
+    appCopyright: "AniXFlow",
     icon: "icon/icon",
   },
   rebuildConfig: {},
@@ -15,10 +15,10 @@ module.exports = {
     {
       name: '@electron-forge/maker-squirrel',
       config: {
-        name: 'AniDeskPlus',
-        authors: 'AniDeskPlus',
-        iconUrl: "https://raw.githubusercontent.com/MjKey/AniDeskPlus/main/public/assets/icons/anidesk-icon.png",
-        setupExe: `AniDeskPlus-${package.version}-win32.exe`,
+        name: 'AniXFlow',
+        authors: 'AniXFlow',
+        iconUrl: "https://raw.githubusercontent.com/MjKey/AniXFlow/main/public/assets/icons/anixflow-icon.png",
+        setupExe: `AniXFlow-${package.version}-win32.exe`,
         setupIcon: 'icon/icon.ico',
         loadingGif: 'icon/install-anim.gif'
       },
@@ -31,11 +31,11 @@ module.exports = {
       name: '@electron-forge/maker-deb',
       config: {
         options: {
-          name: "anideskplus",
-          productName: "AniDeskPlus",
+          name: "anixflow",
+          productName: "AniXFlow",
           icon: "icon/icon.ico",
           maintainer: 'MjKey',
-          homepage: "https://github.com/MjKey/AniDeskPlus",
+          homepage: "https://github.com/MjKey/AniXFlow",
         }
       },
     },

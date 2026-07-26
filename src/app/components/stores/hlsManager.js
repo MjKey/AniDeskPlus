@@ -33,6 +33,30 @@ export class HlsManager {
 
         if (typeof Hls !== 'undefined' && Hls.isSupported()) {
             this._hls = new Hls();
+            this._hls.on(Hls.Events.ERROR, (_event, data) => {
+                if (data && data.fatal) {
+                    const netErrType = Hls.ErrorTypes?.NETWORK_ERROR || "networkError";
+                    const mediaErrType = Hls.ErrorTypes?.MEDIA_ERROR || "mediaError";
+                    if (data.type === netErrType) {
+                        console.warn("[HlsManager] Fatal HLS network error encountered, recovering with startLoad()", data);
+                        try {
+                            this._hls.startLoad();
+                        } catch (e) {
+                            console.error("[HlsManager] Error calling startLoad():", e);
+                        }
+                    } else if (data.type === mediaErrType) {
+                        console.warn("[HlsManager] Fatal HLS media error encountered, recovering with recoverMediaError()", data);
+                        try {
+                            this._hls.recoverMediaError();
+                        } catch (e) {
+                            console.error("[HlsManager] Error calling recoverMediaError():", e);
+                        }
+                    } else {
+                        console.error("[HlsManager] Unrecoverable fatal HLS error:", data);
+                        this.destroy();
+                    }
+                }
+            });
             this._hls.on(Hls.Events.BUFFER_APPENDING, (_e, data) => {
                 const endPTS = data?.frag?._streams?.video?.endPTS ?? data?.frag?.endPTS;
                 if (typeof endPTS === 'number' && this._video && this._video.duration) {
@@ -41,6 +65,14 @@ export class HlsManager {
                 }
             });
         }
+    }
+
+    /**
+     * Получить текущий инстанс HLS
+     * @returns {any|null}
+     */
+    getHlsInstance() {
+        return this._hls;
     }
 
     /**
@@ -162,6 +194,8 @@ export class HlsManager {
      * @param {string} url
      */
     static isHlsUrl(url) {
+        if (!url || typeof url !== 'string') return false;
+        if (url.startsWith('anixflow://') || url.startsWith('anidesk-offline://')) return false;
         if (typeof Hls === 'undefined' || !Hls.isSupported()) return false;
         try {
             return !new URL(url, window.location.href).pathname.endsWith('.mp4');

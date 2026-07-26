@@ -176,6 +176,18 @@
         onChangeCallback={(e) => updateMainKey("EnableDevTools", e)}
     />
 
+    <CheckboxElement
+        title="Включить CDN Прокси"
+        description="Обход блокировок и проксирование постеров аниме через CDN."
+        value={baseSettings?.EnableCdnProxy ?? false}
+        onChangeCallback={(e) => {
+            if (window.proxy?.toggle) {
+                window.proxy.toggle(e);
+            }
+            updateMainKey("EnableCdnProxy", e);
+        }}
+    />
+
     <DropdownElement
         title="Эндпоинт API"
         values={utils.endpointValues}

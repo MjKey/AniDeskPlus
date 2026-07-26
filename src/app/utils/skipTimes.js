@@ -25,7 +25,7 @@ async function searchShikimori(query) {
     try {
         const url = `https://shikimori.one/api/animes?search=${encodeURIComponent(query.trim())}&limit=5`;
         const res = await fetch(url, {
-            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AniDeskPlus/1.0' }
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AniXFlow/1.0' }
         });
         if (!res.ok) return null;
         const data = await res.json();

@@ -35,6 +35,7 @@
     export let changeAspectRatio;
     export let aspectRatio;
     export let changeSleepTimer;
+    export let changePlaybackRate = (rate) => {};
     export let sleepTimerLabel = "Выкл";
     export let activeSkipType = null;
     export let skipTimes = { op: null, ed: null };
@@ -258,6 +259,7 @@
             {changeUpscale}
             {changeAspectRatio}
             {changeSleepTimer}
+            {changePlaybackRate}
             {video}
         />
     </div>

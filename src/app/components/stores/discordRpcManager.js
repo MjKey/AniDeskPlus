@@ -22,7 +22,7 @@ export class DiscordRpcManager {
             },
             {
                 label: "Ссылка на клиент",
-                url: "https://github.com/MjKey/AniDeskPlus",
+                url: "https://github.com/MjKey/AniXFlow",
             },
         ];
     }
@@ -45,7 +45,7 @@ export class DiscordRpcManager {
             state: episodeName ? `${episodeName}` : "",
             details: this.releaseTitle,
             largeImageKey: "anidesk-transparent",
-            largeImageText: "AniDeskPlus - Anixart Client",
+            largeImageText: "AniXFlow - Anixart Client",
             startTimestamp: start,
             ...(end ? { endTimestamp: end } : {}),
             instance: true,
@@ -65,7 +65,7 @@ export class DiscordRpcManager {
             state: episodeName ? `${episodeName}` : "",
             details: this.releaseTitle,
             largeImageKey: "anidesk-transparent",
-            largeImageText: "AniDeskPlus - Anixart Client",
+            largeImageText: "AniXFlow - Anixart Client",
             instance: true,
             buttons: this._getButtons(),
         });

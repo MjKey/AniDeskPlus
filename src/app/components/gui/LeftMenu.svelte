@@ -28,6 +28,9 @@
     import Notifications from "../../pages/Notifications.svelte";
     import NotificationAvailable from "../../icons/notificationAvailable.svg";
     import { notificationCount } from "../stores/notificationCount";
+    import Offline from "../../pages/Offline.svelte";
+    import OfflineRelease from "../../pages/OfflineRelease.svelte";
+    import DownloadIcon from "../../icons/download.svg";
 
     export const views = [
         Home,
@@ -42,7 +45,9 @@
         Profile,
         Login,
         Player,
-        Collection
+        Collection,
+        Offline,
+        OfflineRelease
     ];
 
     export let viewportComponent = null;
@@ -79,10 +84,10 @@
                 type: 3,
                 state: "Ожидание...",
                 largeImageKey: "anidesk-transparent",
-                largeImageText: "AniDeskPlus - Anixart Client",
+                largeImageText: "AniXFlow - Anixart Client",
                 instance: true,
                 buttons: [
-                    { label: "Ссылка на клиент", url: "https://github.com/MjKey/AniDeskPlus" },
+                    { label: "Ссылка на клиент", url: "https://github.com/MjKey/AniXFlow" },
                 ],
             });
         }
@@ -165,6 +170,11 @@
             argsComponent={{
                 query: null
             }}
+        />
+        <LeftMenuButton
+            icon={DownloadIcon}
+            selected={viewportComponent == views[Pages.OFFLINE] || viewportComponent == views[Pages.OFFLINE_RELEASE]}
+            viewportComponentIndex={Pages.OFFLINE}
         />
     </div>
     <div class="bottom-menu-content">

@@ -4,5 +4,6 @@
   "EnableDevTools": false,
   "MinimizeToTray": true,
   "EnableEpisodeNotifications": true,
-  "PreferredDubber": ""
+  "PreferredDubber": "",
+  "EnableCdnProxy": false
 }

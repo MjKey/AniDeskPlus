@@ -16,6 +16,7 @@ export const isHiddenStore = writable(false);
 export const aspectRatioStore = writable('16:9');
 export const volumePercentStore = writable(100);
 export const transparentPercentStore = writable(50);
+export const playbackRateStore = writable(1.0);
 
 // --- Skip & Toast Stores ---
 export const skipTimesStore = writable({ op: null, ed: null });
@@ -38,6 +39,7 @@ export default {
     aspectRatioStore,
     volumePercentStore,
     transparentPercentStore,
+    playbackRateStore,
     skipTimesStore,
     activeSkipTypeStore,
     skipToastMessageStore,

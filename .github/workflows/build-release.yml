@@ -43,7 +43,7 @@ jobs:
         with:
           draft: false
           prerelease: false
-          name: AniDesk Plus ${{ github.ref_name }}
+          name: AniXFlow ${{ github.ref_name }}
           files: |
             out/make/**/*
         env:

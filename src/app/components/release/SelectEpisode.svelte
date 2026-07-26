@@ -5,11 +5,16 @@
     import { localStorageWritable } from "@babichjacob/svelte-localstorage";
     import DropdownButton from "../buttons/DropdownButton.svelte";
     import { getReleasePositions } from "../../utils/watchPosition.js";
+    import { downloadProgressStore } from "../stores/downloadProgressStore";
+    import { Pages } from "../../pages.js";
 
     const dispatch = createEventDispatcher();
 
     export let args;
     export let showed;
+
+    $: progresses = $downloadProgressStore;
+    let offlineLibrary = [];
 
     let currentDubberId,
         currentDubberName,
@@ -20,11 +25,18 @@
 
     let preferredDubbersMap = {};
 
-    onMount(() => {
+    onMount(async () => {
         try {
             preferredDubbersMap = JSON.parse(localStorage.getItem("preferred_dubbers") || "{}");
         } catch (e) {
             preferredDubbersMap = {};
+        }
+        try {
+            if (typeof window !== 'undefined' && window.offlineApi) {
+                offlineLibrary = await window.offlineApi.getLibrary();
+            }
+        } catch (e) {
+            console.error("Failed to load offline library", e);
         }
     });
 
@@ -258,7 +270,11 @@
 </script>
 
 {#snippet baseCard(x, clickCallback)}
-    {@const pos = watchMap.get(x.position || parseInt(x.name?.match(/\d+/)?.[0] || '1', 10) || 1)}
+    {@const epPos = x.position || x.id}
+    {@const pos = watchMap.get(epPos || 1)}
+    {@const progress = progresses[`${args.id}_${epPos}`]}
+    {@const offlineEp = (offlineLibrary.find(a => a.id === args.id)?.episodes || []).find(e => e.id === epPos)}
+    {@const isOffline = Boolean(offlineEp || progress === 100)}
     <div class="base-card" role="button" tabindex="0" onclick={clickCallback}>
         <div class="base-card-name">
             {x.name}
@@ -266,12 +282,71 @@
         <div class="right-menu flex-row">
             <button
                 class="episode-download-btn flex-row"
-                title="Скачать серию"
-                onclick={(evt) => downloadEpisode(x, evt)}
-                disabled={downloadingEpisodeId === x.id}
+                title={isOffline ? "Удалить скачанный эпизод" : (progress >= 0 && progress < 100 ? "Отменить скачивание" : "Скачать серию")}
+                onclick={async (evt) => {
+                    evt.stopPropagation();
+                    if (isOffline) {
+                        if (confirm("Вы действительно хотите удалить эту скачанную серию?")) {
+                            await window.offlineApi.deleteEpisode(args.id, epPos);
+                            downloadProgressStore.update(s => { delete s[`${args.id}_${epPos}`]; return { ...s }; });
+                            if (window.offlineApi) offlineLibrary = await window.offlineApi.getLibrary();
+                        }
+                        return;
+                    }
+                    if (progress === -2 || (progress >= 0 && progress < 100)) {
+                        await window.offlineApi.cancelDownload(args.id, epPos);
+                        downloadProgressStore.update(s => { delete s[`${args.id}_${epPos}`]; return { ...s }; });
+                        return;
+                    }
+                    try {
+                        let availableQuality = {};
+                        const sourceName = x.source?.name || x.source?.type?.name || currentSourceName || "Kodik";
+                        switch (sourceName) {
+                            case "Kodik":
+                                const kLinks = await KodikParser.getDirectLinks(x.url);
+                                for (const [key, value] of Object.entries(kLinks || {})) {
+                                    const cleanKey = String(key).replace(/p$/i, '');
+                                    const srcUrl = Array.isArray(value) ? value[0]?.src : value?.src;
+                                    if (srcUrl) availableQuality[cleanKey] = { src: srcUrl };
+                                }
+                                break;
+                            case "Liberty":
+                            case "Libria":
+                                availableQuality = (await AniLibriaParser.getDirectLinks(x.url)) || {};
+                                break;
+                            case "Sibnet":
+                                await utils.fallback(async () => {
+                                    const link = await (SibnetParser.getDirectLinks ? SibnetParser.getDirectLinks(x.url) : SibnetParser.getDirectLink(x.url));
+                                    if (!link) return false;
+                                    const srcUrl = typeof link === 'string' ? link : (link["720"]?.src || link["720"]?.[0]?.src || link.src || link);
+                                    availableQuality = { "720": { src: srcUrl } };
+                                    return true;
+                                }, 3);
+                                break;
+                        }
+                        const rawUrl = availableQuality["1080"]?.src || availableQuality["720"]?.src || availableQuality["480"]?.src || availableQuality["360"]?.src || Object.values(availableQuality)[0]?.src;
+                        if (!rawUrl) return;
+                        const realUrl = rawUrl.startsWith('//') ? `https:${rawUrl}` : rawUrl;
+                        await window.offlineApi.downloadEpisode(
+                            { id: args.id, title: args.title_ru || args.title || args.name, image: args.image },
+                            { id: epPos, title: x.name },
+                            realUrl
+                        );
+                        downloadProgressStore.update(s => ({ ...s, [`${args.id}_${epPos}`]: -2 }));
+                    } catch (e) {
+                        console.error("Download episode error:", e);
+                    }
+                }}
             >
-                {#if downloadingEpisodeId === x.id}
-                    <span class="download-spinner">⏳</span>
+                {#if isOffline}
+                    <span style="color: #4CAF50; font-size: 13px; font-weight: bold; margin-right: 4px;">Скачано</span>
+                    <img src="./assets/icons/checkmark.svg" alt="check" width="16" height="16" />
+                {:else if progress >= 0 && progress < 100}
+                    <span style="color: #4CAF50; font-size: 13px; font-weight: bold;">{Math.round(progress)}%</span>
+                {:else if progress === -2}
+                    <span style="color: #FFC107; font-size: 13px; font-weight: bold;">Очередь</span>
+                {:else if progress === -1}
+                    <span style="color: #F44336; font-size: 13px; font-weight: bold;">Ошибка</span>
                 {:else}
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -359,6 +434,23 @@
             {:then i}
                 {#each i.episodes as d}
                     {@render baseCard(d, async () => {
+                        const epPos = d.position || d.id;
+                        const offlineEp = (offlineLibrary.find(a => a.id === args.id)?.episodes || []).find(e => e.id === epPos);
+                        if (offlineEp) {
+                            const hexPath = Array.from(new TextEncoder().encode(offlineEp.filePath)).map(b => b.toString(16).padStart(2, '0')).join('');
+                            const offlineUrl = `anixflow://${hexPath}`;
+                            updateViewportComponent(Pages.PLAYER, {
+                                src: offlineUrl,
+                                currentQuality: 720,
+                                availableQuality: { "720": { src: offlineUrl } },
+                                release: args,
+                                episodes: i.episodes,
+                                currentEpisode: d,
+                                isOffline: true
+                            });
+                            return;
+                        }
+
                         let availableQuality, link;
 
                         const sourceName = d.source?.name || d.source?.type?.name || currentSourceName || "Kodik";

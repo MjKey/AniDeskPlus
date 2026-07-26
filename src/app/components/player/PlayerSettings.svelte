@@ -13,6 +13,7 @@
     export let changeUpscale;
     export let changeAspectRatio;
     export let changeSleepTimer;
+    export let changePlaybackRate = (rate) => {};
     export let video;
 
     let page = 0;
@@ -128,8 +129,8 @@
                     <span class="btn-title">Скорость:</span>
                     <span
                         >{utils.playerSpeedValues.find(
-                            (x) => x.value == video.playbackRate,
-                        )?.label ?? video.playbackRate} →</span
+                            (x) => x.value == (video?.playbackRate || currentSettings?.defaultPlaybackRate || playerSettings?.defaultPlaybackRate || 1.0),
+                        )?.label ?? (video?.playbackRate || currentSettings?.defaultPlaybackRate || playerSettings?.defaultPlaybackRate || 1.0)} →</span
                     >
                 </button>
                 <button
@@ -220,7 +221,8 @@
                         class="player-settings-element"
                         onclick={() => {
                             transitionDirection = -1;
-                            video.playbackRate = option.value;
+                            if (video) video.playbackRate = option.value;
+                            changePlaybackRate(option.value);
                             page = 0;
                         }}
                     >

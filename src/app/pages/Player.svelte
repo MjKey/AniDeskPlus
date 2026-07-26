@@ -371,11 +371,29 @@
         });
     }
 
+    let videoAspect = 16 / 9;
     let aspectRatio = `aspect-${playerSettings.defaultAspectRatio}`;
 
     function changeAspectRatio(aspect) {
         playerSettings.defaultAspectRatio = aspect;
         aspectRatio = `aspect-${aspect}`;
+        persistPlayerSettings(playerSettings);
+    }
+
+    function applyPlaybackRate() {
+        if (video && playerSettings?.defaultPlaybackRate) {
+            try {
+                video.playbackRate = Number(playerSettings.defaultPlaybackRate);
+            } catch (e) {
+                console.error("[Player] Error setting playbackRate:", e);
+            }
+        }
+    }
+
+    function changePlaybackRate(rate) {
+        playerSettings.defaultPlaybackRate = Number(rate);
+        persistPlayerSettings(playerSettings);
+        applyPlaybackRate();
     }
 
     function handleSetVolume(vol, persist = true) {
@@ -482,6 +500,17 @@
                 : episode.source;
 
         rememberPlaybackSelection(source);
+
+        if (args.isOffline || (episode.url && (episode.url.startsWith('anixflow://') || episode.url.startsWith('anidesk-offline://')))) {
+            const offlineSrc = episode.url || args.src;
+            args.src = offlineSrc;
+            args.availableQuality = { "720": { src: offlineSrc } };
+            hlsManager.loadSource(offlineSrc, true);
+            if (rpcManager) {
+                rpcManager.setPlaying(episode.name, video?.currentTime, video?.duration);
+            }
+            return;
+        }
 
         switch (source.name) {
             case "Kodik":
@@ -596,7 +625,11 @@
 
         video.onloadedmetadata = () => {
             loading = true;
+            if (video.videoWidth && video.videoHeight) {
+                videoAspect = video.videoWidth / video.videoHeight;
+            }
             syncDuration();
+            applyPlaybackRate();
             tryRestoreWatchPosition();
         };
 
@@ -606,16 +639,24 @@
 
         video.oncanplay = () => {
             syncDuration();
+            applyPlaybackRate();
         };
 
         video.onwaiting = () => {
-            loading = false;
+            loading = true;
         };
 
         video.onplaying = () => {
             loading = false;
             syncDuration();
+            applyPlaybackRate();
             tryRestoreWatchPosition();
+        };
+
+        video.onerror = (e) => {
+            console.error("[Player] Video element error:", e);
+            loading = true;
+            resetReloadHintTimer();
         };
 
         video.onended = async () => {
@@ -831,7 +872,7 @@
     });
 </script>
 
-<div class="anidesk-player full">
+<div class="anidesk-player full" style="--video-aspect: {videoAspect};">
     <PlayerGui
         {playVideo}
         {args}
@@ -860,11 +901,12 @@
         {changeUpscale}
         {upscaleEnabled}
         {changeAspectRatio}
+        {changePlaybackRate}
         {changeSleepTimer}
         {sleepTimerLabel}
         aspectRatio={utils.aspectRatioValues.find(
             (x) => x.value == playerSettings.defaultAspectRatio,
-        ).label}
+        )?.label ?? "16:9"}
         bind:volumePercent={volPercent}
         {activeSkipType}
         {skipTimes}
@@ -896,7 +938,7 @@
         ></canvas>
     {/if}
     <video
-        class="player-video"
+        class="player-video {aspectRatio}"
         crossorigin="anonymous"
         class:full={!availableGPU}
         class:hide={availableGPU}
@@ -990,6 +1032,13 @@
 
     .aspect-fit {
         width: 100%;
+    }
+
+    .aspect-original {
+        aspect-ratio: var(--video-aspect, 16 / 9);
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
     }
 
     .anidesk-player {

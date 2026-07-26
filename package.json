@@ -1,10 +1,10 @@
 {
-  "name": "anideskplus",
+  "name": "anixflow",
   "version": "1.0.8",
   "description": "Unofficial desktop client of Anixart",
   "main": "./src/main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest run",
     "startOnlyElectron": "electron-forge start",
     "start": "sirv public --no-clear",
     "dev": "rollup -c -w --bundleConfigAsCjs",
@@ -18,9 +18,10 @@
   "keywords": [
     "anixart"
   ],
-  "author": "AniDeskPlus",
+  "author": "AniXFlow",
   "license": "ISC",
   "devDependencies": {
+    "vitest": "^2.1.8",
     "@babichjacob/svelte-localstorage": "^1.1.2",
     "@electron-forge/cli": "^7.11.2",
     "@electron-forge/maker-deb": "^7.11.2",
@@ -47,14 +48,17 @@
     "rollup-plugin-svgo": "^2.0.0",
     "sirv-cli": "^3.0.1",
     "svelte": "^5.56.7",
+    "vitest": "^2.1.8",
     "wait-on": "^9.0.10"
   },
   "dependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@xhayper/discord-rpc": "^1.3.4",
     "anime4k-webgpu": "^1.0.0",
     "anixartjs": "^0.1.8",
     "electron-serve": "^3.0.1",
     "electron-squirrel-startup": "^1.0.1",
+    "fluent-ffmpeg": "^2.1.3",
     "openurl": "^1.1.1"
   },
   "allowScripts": {

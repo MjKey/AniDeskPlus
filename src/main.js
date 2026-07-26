@@ -1,9 +1,17 @@
-const { app, BrowserWindow, ipcMain, net, autoUpdater, dialog, Tray, Menu, Notification, nativeImage, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, net, autoUpdater, dialog, Tray, Menu, Notification, nativeImage, shell, protocol } = require('electron');
 if (require('electron-squirrel-startup')) {
   app.quit();
   process.exit(0);
 }
+
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'anixflow', privileges: { secure: true, standard: true, supportFetchAPI: true, bypassCSP: true, stream: true } },
+  { scheme: 'anixflow-cache', privileges: { secure: true, standard: true, supportFetchAPI: true, bypassCSP: true } }
+]);
+
+const { initDownloader } = require('./downloader');
 const path = require('node:path');
+const crypto = require('crypto');
 const o = require('openurl');
 const serve = require('electron-serve').default;
 const loadURL = serve({ directory: './public' });
@@ -37,11 +45,140 @@ function loadEnv() {
 }
 loadEnv();
 
+function isKodikDomain(host) {
+  if (!host) return false;
+  const kodikDomains = ['kodik.biz', 'vlp.to', 'vovacdn.net', 'vrbcdn.net', 'kodikplayer.com'];
+  const lowerHost = host.toLowerCase();
+  return kodikDomains.some(domain => lowerHost === domain || lowerHost.endsWith('.' + domain));
+}
+
+function hexEncodeUrl(url) {
+  return Buffer.from(url, 'utf8').toString('hex');
+}
+
+function hexDecodeUrl(hexStr) {
+  return Buffer.from(hexStr, 'hex').toString('utf8');
+}
+
+function isBlockedImageDomain(urlStr) {
+  try {
+    const host = new URL(urlStr).host.toLowerCase();
+    const blockedDomains = ['kinopoisk', 'yandex', 'anixart', 'shikimori', 'anixmirai', 'vk.com'];
+    return blockedDomains.some(domain => host.includes(domain));
+  } catch (e) {
+    return false;
+  }
+}
+
+function getProxyImageUrl(originalUrl) {
+  return `https://images.weserv.nl/?url=${encodeURIComponent(originalUrl)}&w=300&output=webp`;
+}
+
+let ImageCachePath;
+try {
+  ImageCachePath = path.join(app.getPath("userData"), "image_cache");
+} catch (_) {
+  ImageCachePath = path.join(__dirname, "temp_image_cache");
+}
+
+if (!fs.existsSync(ImageCachePath)) {
+  try {
+    fs.mkdirSync(ImageCachePath, { recursive: true });
+  } catch (e) {
+    console.error("Failed to create image cache directory:", e);
+  }
+}
+
+const cacheInFlight = new Map();
+
+async function handleAnixflowCacheRequest(req) {
+  try {
+    const rawUrl = typeof req === 'string' ? req : (req?.url || '');
+    const hexUrl = rawUrl.replace(/^anixflow-cache:\/\//, '').replace(/\/$/, '');
+    const originalUrl = hexDecodeUrl(hexUrl);
+
+    if (!originalUrl) {
+      return new Response(null, { status: 400 });
+    }
+
+    const hash = crypto.createHash('md5').update(originalUrl).digest('hex');
+    let ext = '.jpg';
+    try {
+      const urlObj = new URL(originalUrl);
+      ext = path.extname(urlObj.pathname) || '.jpg';
+    } catch (_) {}
+
+    const filePath = path.join(ImageCachePath, `${hash}${ext}`);
+    const normalizedPath = filePath.replace(/\\/g, '/');
+
+    if (fs.existsSync(filePath)) {
+      if (typeof net !== 'undefined' && net.fetch) {
+        return net.fetch(`file:///${normalizedPath}`);
+      } else {
+        const fileData = await fs.promises.readFile(filePath);
+        return new Response(fileData, { headers: { 'Content-Type': 'image/jpeg' } });
+      }
+    } else {
+      if (!cacheInFlight.has(filePath)) {
+        const isBlocked = isBlockedImageDomain(originalUrl);
+        const proxyUrl = getProxyImageUrl(originalUrl);
+
+        const bufferPromise = (async () => {
+          let response = null;
+          if (isBlocked) {
+            if (typeof net !== 'undefined' && net.fetch) {
+              response = await net.fetch(proxyUrl, {
+                headers: { 'User-Agent': UserAgent, 'Referer': 'https://anixart.tv/' }
+              });
+            } else if (typeof fetch !== 'undefined') {
+              response = await fetch(proxyUrl, {
+                headers: { 'User-Agent': UserAgent, 'Referer': 'https://anixart.tv/' }
+              });
+            }
+          } else {
+            try {
+              const fetchFn = (typeof net !== 'undefined' && net.fetch) ? net.fetch : fetch;
+              response = await fetchFn(originalUrl, {
+                headers: { 'User-Agent': UserAgent, 'Referer': 'https://anixart.tv/' }
+              });
+              if (!response || !response.ok) {
+                response = await fetchFn(proxyUrl, {
+                  headers: { 'User-Agent': UserAgent, 'Referer': 'https://anixart.tv/' }
+                });
+              }
+            } catch (e) {
+              const fetchFn = (typeof net !== 'undefined' && net.fetch) ? net.fetch : fetch;
+              response = await fetchFn(proxyUrl, {
+                headers: { 'User-Agent': UserAgent, 'Referer': 'https://anixart.tv/' }
+              });
+            }
+          }
+
+          if (!response || !response.ok) return null;
+          const buffer = await response.arrayBuffer();
+          await fs.promises.writeFile(filePath, Buffer.from(buffer));
+          return buffer;
+        })();
+
+        bufferPromise.finally(() => cacheInFlight.delete(filePath));
+        cacheInFlight.set(filePath, bufferPromise);
+      }
+
+      const buffer = await cacheInFlight.get(filePath);
+      if (!buffer) return new Response(null, { status: 502 });
+      return new Response(buffer, { headers: { 'Content-Type': 'image/jpeg' } });
+    }
+  } catch (e) {
+    console.error("Cache protocol error:", e);
+    return new Response(null, { status: 500 });
+  }
+}
+
 const { SibnetParser } = require('anixartjs');
 
 const isDebugMode = process.argv.includes('--debug') || process.argv.includes('-d');
 if (isDebugMode) {
-  console.log('[DEBUG] Running AniDeskPlus in DEBUG mode');
+  console.log('[DEBUG] Running AniXFlow in DEBUG mode');
 }
 
 /**
@@ -52,7 +189,7 @@ let tray = null;
 let isQuitting = false;
 
 const server = 'https://update.electronjs.org';
-const feed = `${server}/MjKey/AniDeskPlus/${process.platform}-${process.arch}/${app.getVersion()}`;
+const feed = `${server}/MjKey/AniXFlow/${process.platform}-${process.arch}/${app.getVersion()}`;
 const UserAgent = "AnixartApp/9.0 BETA 3-25021818 (Android 9; SDK 28; x86_64; ROG ASUS AI2201_B; ru)";
 const rpcClientId = '1372649290438148137';
 const SettingsPath = path.join(app.getPath("userData"), "settings.json");
@@ -118,8 +255,8 @@ function broadcastUpdaterStatus(statusData) {
 async function checkForUpdatesGitHub() {
   const currentVersion = app.getVersion();
   try {
-    const res = await net.fetch("https://api.github.com/repos/MjKey/AniDeskPlus/releases/latest", {
-      headers: { "User-Agent": "AniDeskPlusApp" }
+    const res = await net.fetch("https://api.github.com/repos/MjKey/AniXFlow/releases/latest", {
+      headers: { "User-Agent": "AniXFlowApp" }
     });
     if (res.ok) {
       const data = await res.json();
@@ -130,7 +267,7 @@ async function checkForUpdatesGitHub() {
         status: isNewer ? "available" : "latest",
         latestVersion: latestTag,
         currentVersion: cleanCurrent,
-        releaseUrl: data.html_url || "https://github.com/MjKey/AniDeskPlus/releases",
+        releaseUrl: data.html_url || "https://github.com/MjKey/AniXFlow/releases",
         text: isNewer ? `Доступно обновление v${latestTag}!` : `У вас установлена последняя версия (v${cleanCurrent})`
       };
     }
@@ -178,7 +315,7 @@ function initAutoUpdater() {
       const dialogOpts = {
         type: 'info',
         buttons: ['Перезапустить и обновить', 'Позже'],
-        title: 'Обновление AniDeskPlus',
+        title: 'Обновление AniXFlow',
         message: process.platform === 'win32' ? (releaseName || 'Новая версия готова!') : releaseName,
         detail: 'Новая версия успешно скачана. Перезапустить приложение сейчас для установки?'
       };
@@ -244,15 +381,17 @@ function isDev() {
 function getAppIconPath() {
   const candidates = [
     path.join(__dirname, 'icon', 'icon.ico'),
+    path.join(__dirname, 'public', 'assets', 'icons', 'anixflow-icon.png'),
     path.join(__dirname, 'public', 'assets', 'icons', 'anidesk-icon.png'),
     path.join(process.resourcesPath || '', 'icon', 'icon.ico'),
     path.join(app.getAppPath(), 'icon', 'icon.ico'),
+    path.join(app.getAppPath(), 'public', 'assets', 'icons', 'anixflow-icon.png'),
     path.join(app.getAppPath(), 'public', 'assets', 'icons', 'anidesk-icon.png')
   ];
   for (const c of candidates) {
     if (fs.existsSync(c)) return c;
   }
-  return path.join(__dirname, 'public', 'assets', 'icons', 'anidesk-icon.png');
+  return path.join(__dirname, 'public', 'assets', 'icons', 'anixflow-icon.png');
 }
 
 function createTray() {
@@ -260,11 +399,11 @@ function createTray() {
   const iconPath = getAppIconPath();
   const trayIcon = fs.existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : nativeImage.createEmpty();
   tray = new Tray(trayIcon);
-  tray.setToolTip('AniDeskPlus');
+  tray.setToolTip('AniXFlow');
 
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Показать AniDeskPlus',
+      label: 'Показать AniXFlow',
       click: () => {
         if (mainWindow) {
           if (mainWindow.isMinimized()) mainWindow.restore();
@@ -301,7 +440,7 @@ function createDebugWindow() {
   debugWindow = new BrowserWindow({
     width: 850,
     height: 600,
-    title: 'AniDeskPlus — Live Debug Console',
+    title: 'AniXFlow — Live Debug Console',
     icon: getAppIconPath(),
     autoHideMenuBar: true,
     webPreferences: {
@@ -404,10 +543,36 @@ function createWindow() {
     mainWindow.show();
   });
 
+  initDownloader(mainWindow);
+
+  mainWindow.webContents.session.webRequest.onBeforeRequest(
+    { urls: ['*://*/*'] },
+    (details, callback) => {
+      const { url, resourceType } = details;
+      try {
+        if (url && url.startsWith('http') && resourceType === 'image') {
+          const cdnProxyEnabled = settingsManager.get('EnableCdnProxy') ?? false;
+          const isBlocked = isBlockedImageDomain(url);
+
+          if (cdnProxyEnabled || isBlocked) {
+            const hexUrl = hexEncodeUrl(url);
+            return callback({ redirectURL: `anixflow-cache://${hexUrl}` });
+          }
+        }
+      } catch (e) {
+        console.error("Image proxy intercept error:", e);
+      }
+      callback({});
+    }
+  );
+
   mainWindow.webContents.session.webRequest.onBeforeSendHeaders(
     (details, callback) => {
       const { url, requestHeaders } = details;
-      const host = new URL(url).host;
+      let host = '';
+      try {
+        host = new URL(url).host;
+      } catch (_) {}
 
       if (isDebugMode) {
         sendDebugLog('net', `-> [${details.method}] ${url}`);
@@ -420,7 +585,7 @@ function createWindow() {
         UpsertKeyValue(requestHeaders, 'Referer', url);
       }
 
-      if (host !== "kodikplayer.com" && host !== "video.sibnet.ru") {
+      if (!isKodikDomain(host) && host !== "video.sibnet.ru") {
         UpsertKeyValue(requestHeaders, 'sec-ch-ua-platform', "Android");
         UpsertKeyValue(requestHeaders, 'sec-ch-ua-mobile', "?1");
         UpsertKeyValue(requestHeaders, 'sec-ch-ua', "AnixartApp");
@@ -444,9 +609,17 @@ function createWindow() {
 }
 
 app.on('ready', () => {
-  if (process.platform === 'win32') {
-    app.setAppUserModelId('com.mjkey.anideskplus');
+  try {
+    protocol.handle('anixflow', handleAnixflowRequest);
+    protocol.handle('anixflow-cache', (req) => handleAnixflowCacheRequest(req));
+  } catch (e) {
+    console.error("Protocol handler registration error:", e);
   }
+
+  if (process.platform === 'win32') {
+    app.setAppUserModelId('com.mjkey.anixflow');
+  }
+  initDownloader(ipcMain, app, shell);
   createTray();
   createWindow();
   if (isDebugMode) {
@@ -521,6 +694,11 @@ ipcMain.handle("app:quit", () => {
   app.quit();
 });
 
+ipcMain.handle("proxy:toggle", (_, enabled) => {
+  settingsManager.set("EnableCdnProxy", !!enabled);
+  return settingsManager.get("EnableCdnProxy");
+});
+
 ipcMain.handle("settings:get", (_, key) => settingsManager.get(key));
 
 ipcMain.handle("settings:set", (_, key, value) => {
@@ -528,6 +706,13 @@ ipcMain.handle("settings:set", (_, key, value) => {
 });
 
 ipcMain.handle("settings:getAll", (_) => settingsManager.getAll());
+
+ipcMain.handle("proxy:toggle", (_, enabled) => {
+  const current = settingsManager.get("EnableCdnProxy") ?? false;
+  const newValue = enabled !== undefined ? !!enabled : !current;
+  settingsManager.set("EnableCdnProxy", newValue);
+  return newValue;
+});
 
 ipcMain.handle("window:minimize", (_) => {
   mainWindow.minimize();
@@ -611,9 +796,9 @@ ipcMain.handle("prc:isDebug", (_) => isDebugMode);
 
 ipcMain.handle("notify:send", (_, { title, body, releaseId }) => {
   if (!Notification.isSupported()) return false;
-  const iconPath = path.join(__dirname, 'public', 'assets', 'icons', 'anidesk-icon.png');
+  const iconPath = path.join(__dirname, 'public', 'assets', 'icons', 'anixflow-icon.png');
   const notif = new Notification({
-    title: title || 'AniDeskPlus',
+    title: title || 'AniXFlow',
     body: body || '',
     icon: fs.existsSync(iconPath) ? iconPath : undefined
   });
@@ -903,3 +1088,93 @@ ipcMain.handle("download:episode", async (event, { url, defaultFileName, referer
     return { success: false, error: e.message };
   }
 });
+
+async function handleAnixflowRequest(request) {
+  try {
+    const urlStr = request.url;
+    const rawPath = urlStr.replace(/^anixflow:\/\//i, '').replace(/\/$/, '');
+    let filePath;
+
+    if (/^[0-9a-fA-F]+$/.test(rawPath) && rawPath.length % 2 === 0) {
+      try {
+        filePath = Buffer.from(rawPath, 'hex').toString('utf8');
+      } catch (_) {
+        filePath = decodeURIComponent(rawPath);
+      }
+    } else {
+      filePath = decodeURIComponent(rawPath);
+    }
+    filePath = filePath.replace(/\\/g, '/');
+
+    if (!fs.existsSync(filePath)) {
+      return new Response('File not found', { status: 404 });
+    }
+
+    const stat = fs.statSync(filePath);
+    const fileSize = stat.size;
+    const rangeHeader = request.headers ? (request.headers.get ? request.headers.get('range') : request.headers['range']) : null;
+
+    if (rangeHeader) {
+      const parts = rangeHeader.replace(/bytes=/, '').split('-');
+      let start, end;
+      if (parts[0] === '') {
+        const suffixLength = parseInt(parts[1], 10);
+        start = Math.max(0, fileSize - suffixLength);
+        end = fileSize - 1;
+      } else {
+        start = parseInt(parts[0], 10);
+        end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      }
+
+      if (isNaN(start) || start >= fileSize) {
+        return new Response(null, {
+          status: 416,
+          headers: { 'Content-Range': `bytes */${fileSize}` }
+        });
+      }
+      end = Math.min(end, fileSize - 1);
+      const chunkSize = end - start + 1;
+
+      const fileStream = fs.createReadStream(filePath, { start, end });
+      const { Readable } = require('stream');
+      const nodeReadable = Readable.toWeb ? Readable.toWeb(fileStream) : fileStream;
+
+      return new Response(nodeReadable, {
+        status: 206,
+        headers: {
+          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': String(chunkSize),
+          'Content-Type': 'video/mp4',
+        },
+      });
+    } else {
+      const fileStream = fs.createReadStream(filePath);
+      const { Readable } = require('stream');
+      const nodeReadable = Readable.toWeb ? Readable.toWeb(fileStream) : fileStream;
+
+      return new Response(nodeReadable, {
+        status: 200,
+        headers: {
+          'Accept-Ranges': 'bytes',
+          'Content-Length': String(fileSize),
+          'Content-Type': 'video/mp4',
+        },
+      });
+    }
+  } catch (e) {
+    console.error("anixflow protocol error:", e);
+    return new Response(null, { status: 500 });
+  }
+}
+
+module.exports = {
+  isKodikDomain,
+  hexEncodeUrl,
+  hexDecodeUrl,
+  isBlockedImageDomain,
+  getProxyImageUrl,
+  handleAnixflowCacheRequest,
+  handleAnixflowRequest,
+  settingsManager
+};

@@ -46,7 +46,7 @@
         </svg>
     </div>
     <div class="title-bar-text unselectable">
-        AniDeskPlus <sup>β</sup>
+        AniXFlow <sup>β</sup>
         {#if isDebug}
             <span class="debug-badge">[DEBUG]</span>
         {/if}

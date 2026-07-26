@@ -2,7 +2,7 @@
 chcp 65001 > nul
 
 echo ==============================================
-echo AniDeskPlus - Build and Create Shortcut
+echo AniXFlow - Build and Create Shortcut
 echo ==============================================
 echo.
 
@@ -43,12 +43,12 @@ if %ERRORLEVEL% neq 0 (
 echo.
 echo Step 3: Creating Desktop shortcut...
 
-set "EXE_PATH=%~dp0out\AniDeskPlus-win32-x64\AniDeskPlus.exe"
-set "WORK_DIR=%~dp0out\AniDeskPlus-win32-x64"
-set "SHORTCUT=%USERPROFILE%\Desktop\AniDeskPlus.lnk"
+set "EXE_PATH=%~dp0out\AniXFlow-win32-x64\AniXFlow.exe"
+set "WORK_DIR=%~dp0out\AniXFlow-win32-x64"
+set "SHORTCUT=%USERPROFILE%\Desktop\AniXFlow.lnk"
 
 if exist "%EXE_PATH%" (
-    powershell -NoProfile -NonInteractive -Command "$ws = New-Object -ComObject WScript.Shell; $s = $ws.CreateShortcut('%SHORTCUT%'); $s.TargetPath = '%EXE_PATH%'; $s.WorkingDirectory = '%WORK_DIR%'; $s.Description = 'AniDeskPlus'; $s.Save()"
+    powershell -NoProfile -NonInteractive -Command "$ws = New-Object -ComObject WScript.Shell; $s = $ws.CreateShortcut('%SHORTCUT%'); $s.TargetPath = '%EXE_PATH%'; $s.WorkingDirectory = '%WORK_DIR%'; $s.Description = 'AniXFlow'; $s.Save()"
     if %ERRORLEVEL% equ 0 (
         echo SUCCESS! Shortcut created at: %SHORTCUT%
     ) else (

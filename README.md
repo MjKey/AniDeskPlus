@@ -1,15 +1,15 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/MjKey/AniDeskPlus/refs/heads/main/icon/Logo.png" width="128" alt="AniDesk Plus Logo" />
+<img src="https://raw.githubusercontent.com/MjKey/AniXFlow/refs/heads/main/icon/Logo.png" width="128" alt="AniXFlow Logo" />
 
-# AniDesk Plus
+# AniXFlow
 
-[![Version](https://img.shields.io/github/v/release/MjKey/AniDeskPlus?color=blue&label=version)](https://github.com/MjKey/AniDeskPlus/releases)
+[![Version](https://img.shields.io/github/v/release/MjKey/AniXFlow?color=blue&label=version)](https://github.com/MjKey/AniXFlow/releases)
 [![License: GPL-2.0](https://img.shields.io/badge/License-GPL--2.0-yellow.svg)](https://opensource.org/licenses/GPL-2.0)
 [![Electron](https://img.shields.io/badge/Electron-43.x-47848F.svg)](https://www.electronjs.org/)
 [![Svelte](https://img.shields.io/badge/Svelte-5.x-FF3E00.svg)](https://svelte.dev/)
 
-**AniDesk Plus** — форк десктопного клиента **AniDesk** для мобильного сервиса **Anixart**.
+**AniXFlow** — форк десктопного клиента **AniDesk** для мобильного сервиса **Anixart**.
 Проект расширяет базовый функционал оригинального клиента: от автоматического пропуска опенингов и таймлайна с выделением OP/ED до прямой загрузки серий и авторизации в Shikimori.
 
 ---
@@ -18,7 +18,7 @@
 
 ## ( ✦ ) Сравнение с оригинальным AniDesk
 
-| Функция / Возможность | Оригинальный AniDesk | AniDesk Plus |
+| Функция / Возможность | Оригинальный AniDesk | AniXFlow |
 | :--- | :---: | :---: |
 | **Скачивание серий** | ❌ Отсутствует | **Прямая загрузка MP4/MKV** с выбором качества |
 | **Интеграция с Shikimori** | ❌ Отсутствует | **GraphQL & OAuth2**, автотрекинг серий, списки |
@@ -31,7 +31,7 @@
 
 ---
 
-## ( ⚙️ ) Основные возможности AniDesk Plus
+## ( ⚙️ ) Основные возможности AniXFlow
 
 ```
 +-----------------------------------------------------------------------------------+
@@ -65,7 +65,7 @@
 ## ( 📦 ) Установка и сборка
 
 ### Готовые сборки
-Скачайте установочный файл `.exe` на странице [**Releases**](https://github.com/MjKey/AniDeskPlus/releases).
+Скачайте установочный файл `.exe` на странице [**Releases**](https://github.com/MjKey/AniXFlow/releases).
 
 ### Сборка из исходного кода
 
@@ -73,8 +73,8 @@
 
 ```bash
 # 1. Клонирование репозитория
-git clone https://github.com/MjKey/AniDeskPlus.git
-cd AniDeskPlus
+git clone https://github.com/MjKey/AniXFlow.git
+cd AniXFlow
 
 # 2. Установка зависимостей
 npm install
@@ -92,4 +92,4 @@ npm run buildAndMake
 
 Данный проект распространяется под лицензией **GPL-2.0**. Подробности см. в файле [LICENSE](LICENSE).
 
-> **Отказ от ответственности:** AniDesk Plus является неофициальным десктопным клиентом для Anixart. Все права на контент, логотипы и товарные знаки принадлежат их соответствующим владельцам.
+> **Отказ от ответственности:** AniXFlow является неофициальным десктопным клиентом для Anixart. Все права на контент, логотипы и товарные знаки принадлежат их соответствующим владельцам.

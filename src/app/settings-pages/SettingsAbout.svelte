@@ -39,7 +39,7 @@
             updateStatus = {
                 status: "error",
                 text: "Ошибка при проверке обновлений.",
-                url: "https://github.com/MjKey/AniDeskPlus/releases"
+                url: "https://github.com/MjKey/AniXFlow/releases"
             };
         } finally {
             if (updateStatus?.status !== "checking") {
@@ -52,12 +52,12 @@
 <div class="about-program flex-column">
     <div class="about-program-title flex-row">
         <img
-            src="./assets/icons/anidesk-transparent.png"
+            src="./assets/icons/anixflow-transparent.png"
             width="200px"
             alt="icon"
         />
         <div class="app-info flex-column">
-            <span class="app-title">AniDeskPlus</span>
+            <span class="app-title">AniXFlow</span>
             <p class="app-description">
                 Улучшенный неофициальный десктоп-клиент для приложения <strong
                     >Anixart</strong
@@ -107,7 +107,7 @@
     </div>
 
     <div class="app-developers flex-column">
-        <span class="app-title">Разработчик AniDeskPlus</span>
+        <span class="app-title">Разработчик AniXFlow</span>
         <div class="developers flex-column">
             <div class="developer flex-row">
                 <img
@@ -118,12 +118,12 @@
                 />
                 <div class="dev-info">
                     <span class="developer-name">MjKey</span>
-                    <span class="developer-role">Создатель форка & Главный разработчик AniDeskPlus</span>
+                    <span class="developer-role">Создатель форка & Главный разработчик AniXFlow</span>
                     <div class="social-links">
                         <button
-                            title="GitHub MjKey/AniDeskPlus"
+                            title="GitHub MjKey/AniXFlow"
                             onclick={() => {
-                                winApi.openLink(`https://github.com/MjKey/AniDeskPlus`);
+                                winApi.openLink(`https://github.com/MjKey/AniXFlow`);
                             }}
                         >
                             <Icon

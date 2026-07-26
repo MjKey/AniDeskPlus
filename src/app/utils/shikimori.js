@@ -1,9 +1,9 @@
 /**
- * Shikimori Integration Module for AniDeskPlus
+ * Shikimori Integration Module for AniXFlow
  * Uses official Shikimori GraphQL API & OAuth2 REST API
  */
 
-const USER_AGENT = "AniDeskPlusApp/1.0 (Desktop; Windows)";
+const USER_AGENT = "AniXFlowApp/1.0 (Desktop; Windows)";
 
 export const SHIKI_CLIENT_ID = __ENV_SHIKIMORI_CLIENT_ID__;
 export const SHIKI_REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob";

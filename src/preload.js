@@ -80,6 +80,10 @@ contextBridge.exposeInMainWorld('settings', {
   set: (key, value) => ipcRenderer.invoke('settings:set', key, value),
 });
 
+contextBridge.exposeInMainWorld('proxy', {
+  toggle: (enabled) => ipcRenderer.invoke('proxy:toggle', enabled),
+});
+
 contextBridge.exposeInMainWorld('updater', {
   check: () => ipcRenderer.invoke('updater:check'),
   install: () => ipcRenderer.invoke('updater:install'),
@@ -88,6 +92,33 @@ contextBridge.exposeInMainWorld('updater', {
     ipcRenderer.on('updater:status', handler);
     return () => ipcRenderer.removeListener('updater:status', handler);
   }
+});
+
+contextBridge.exposeInMainWorld('offlineApi', {
+  getLibrary: () => ipcRenderer.invoke('offline:getLibrary'),
+  openFolder: () => ipcRenderer.invoke('offline:openFolder'),
+  deleteEpisode: (animeId, episodeId) => ipcRenderer.invoke('offline:deleteEpisode', animeId, episodeId),
+  downloadEpisode: (animeMeta, episodeMeta, url) => ipcRenderer.invoke('offline:downloadEpisode', animeMeta, episodeMeta, url),
+  cancelDownload: (animeId, episodeId) => ipcRenderer.invoke('offline:cancelDownload', animeId, episodeId),
+  pauseDownload: (animeId, episodeId) => ipcRenderer.invoke('offline:pauseDownload', animeId, episodeId),
+  resumeDownload: (animeId, episodeId) => ipcRenderer.invoke('offline:resumeDownload', animeId, episodeId),
+  retryDownload: (animeId, episodeId) => ipcRenderer.invoke('offline:retryDownload', animeId, episodeId),
+  getActiveDownloads: () => ipcRenderer.invoke('offline:getActiveDownloads'),
+  onProgress: (callback) => {
+    const handler = (_, data) => callback(data);
+    ipcRenderer.on('offline:progress', handler);
+    return () => ipcRenderer.removeListener('offline:progress', handler);
+  },
+  onError: (callback) => {
+    const handler = (_, data) => callback(data);
+    ipcRenderer.on('offline:error', handler);
+    return () => ipcRenderer.removeListener('offline:error', handler);
+  },
+  onCompleted: (callback) => {
+    const handler = (_, data) => callback(data);
+    ipcRenderer.on('offline:completed', handler);
+    return () => ipcRenderer.removeListener('offline:completed', handler);
+  },
 });
 
 contextBridge.exposeInMainWorld('episodeDownloader', {
