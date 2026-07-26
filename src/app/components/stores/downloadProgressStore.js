@@ -19,7 +19,10 @@ if (typeof window !== 'undefined' && window.offlineApi) {
         }
     }).catch(() => {});
 
-    window.offlineApi.onProgress((data) => {
+    if (window._unsubDownloadProgress) window._unsubDownloadProgress();
+    if (window._unsubDownloadError) window._unsubDownloadError();
+
+    window._unsubDownloadProgress = window.offlineApi.onProgress((data) => {
         if (!data) return;
         downloadProgressStore.update(store => {
             const id = `${data.animeId}_${data.episodeId}`;
@@ -32,7 +35,7 @@ if (typeof window !== 'undefined' && window.offlineApi) {
         });
     });
 
-    window.offlineApi.onError((data) => {
+    window._unsubDownloadError = window.offlineApi.onError((data) => {
         if (!data) return;
         downloadProgressStore.update(store => {
             const id = `${data.animeId}_${data.episodeId}`;

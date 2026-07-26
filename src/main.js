@@ -19,7 +19,9 @@ const fs = require('fs');
 const rpc = require("@xhayper/discord-rpc");
 
 function loadEnv() {
-  const envPath = path.join(__dirname, '..', '.env');
+  const envPath = app.isPackaged 
+    ? path.join(process.resourcesPath, '.env') 
+    : path.join(__dirname, '..', '.env');
   if (fs.existsSync(envPath)) {
     try {
       const lines = fs.readFileSync(envPath, 'utf-8').split('\n');
@@ -78,7 +80,7 @@ let ImageCachePath;
 try {
   ImageCachePath = path.join(app.getPath("userData"), "image_cache");
 } catch (_) {
-  ImageCachePath = path.join(__dirname, "temp_image_cache");
+  ImageCachePath = path.join(process.cwd(), "temp_image_cache");
 }
 
 if (!fs.existsSync(ImageCachePath)) {
@@ -124,40 +126,45 @@ async function handleAnixflowCacheRequest(req) {
         const proxyUrl = getProxyImageUrl(originalUrl);
 
         const bufferPromise = (async () => {
-          let response = null;
-          if (isBlocked) {
-            if (typeof net !== 'undefined' && net.fetch) {
-              response = await net.fetch(proxyUrl, {
-                headers: { 'User-Agent': UserAgent, 'Referer': 'https://anixart.tv/' }
-              });
-            } else if (typeof fetch !== 'undefined') {
-              response = await fetch(proxyUrl, {
-                headers: { 'User-Agent': UserAgent, 'Referer': 'https://anixart.tv/' }
-              });
-            }
-          } else {
-            try {
-              const fetchFn = (typeof net !== 'undefined' && net.fetch) ? net.fetch : fetch;
-              response = await fetchFn(originalUrl, {
-                headers: { 'User-Agent': UserAgent, 'Referer': 'https://anixart.tv/' }
-              });
-              if (!response || !response.ok) {
+          try {
+            let response = null;
+            if (isBlocked) {
+              if (typeof net !== 'undefined' && net.fetch) {
+                response = await net.fetch(proxyUrl, {
+                  headers: { 'User-Agent': UserAgent, 'Referer': 'https://anixart.tv/' }
+                });
+              } else if (typeof fetch !== 'undefined') {
+                response = await fetch(proxyUrl, {
+                  headers: { 'User-Agent': UserAgent, 'Referer': 'https://anixart.tv/' }
+                });
+              }
+            } else {
+              try {
+                const fetchFn = (typeof net !== 'undefined' && net.fetch) ? net.fetch : fetch;
+                response = await fetchFn(originalUrl, {
+                  headers: { 'User-Agent': UserAgent, 'Referer': 'https://anixart.tv/' }
+                });
+                if (!response || !response.ok) {
+                  response = await fetchFn(proxyUrl, {
+                    headers: { 'User-Agent': UserAgent, 'Referer': 'https://anixart.tv/' }
+                  });
+                }
+              } catch (e) {
+                const fetchFn = (typeof net !== 'undefined' && net.fetch) ? net.fetch : fetch;
                 response = await fetchFn(proxyUrl, {
                   headers: { 'User-Agent': UserAgent, 'Referer': 'https://anixart.tv/' }
                 });
               }
-            } catch (e) {
-              const fetchFn = (typeof net !== 'undefined' && net.fetch) ? net.fetch : fetch;
-              response = await fetchFn(proxyUrl, {
-                headers: { 'User-Agent': UserAgent, 'Referer': 'https://anixart.tv/' }
-              });
             }
-          }
 
-          if (!response || !response.ok) return null;
-          const buffer = await response.arrayBuffer();
-          await fs.promises.writeFile(filePath, Buffer.from(buffer));
-          return buffer;
+            if (!response || !response.ok) return null;
+            const buffer = await response.arrayBuffer();
+            await fs.promises.writeFile(filePath, Buffer.from(buffer));
+            return buffer;
+          } catch (err) {
+            console.error("Image cache promise error:", err);
+            return null;
+          }
         })();
 
         bufferPromise.finally(() => cacheInFlight.delete(filePath));
@@ -692,11 +699,6 @@ ipcMain.handle('netElec:fetch', async (event, url, requestInfo) => {
 ipcMain.handle("app:quit", () => {
   isQuitting = true;
   app.quit();
-});
-
-ipcMain.handle("proxy:toggle", (_, enabled) => {
-  settingsManager.set("EnableCdnProxy", !!enabled);
-  return settingsManager.get("EnableCdnProxy");
 });
 
 ipcMain.handle("settings:get", (_, key) => settingsManager.get(key));

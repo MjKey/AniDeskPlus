@@ -6,6 +6,8 @@
     import DropdownButton from "../components/buttons/DropdownButton.svelte"
     import utils from "../utils";
 
+    import { onDestroy } from "svelte";
+
     export let args;
 
     const HISTORY_TYPE = 6;
@@ -22,6 +24,9 @@
                 firstData_count = Releases.content.length;
             }
             return Releases;
+        }).catch((err) => {
+            console.error("fetchFirstData error:", err);
+            return { content: [], total_count: 0 };
         });
     }
 
@@ -134,13 +139,25 @@
         }
     };
 
+    let modalContainerElem = null;
+
     if (args?.isModal) {
         waitForElm(".releases-container.modal-content").then((elem) => {
-            elem.addEventListener("scroll", scrollEvent);
+            modalContainerElem = elem;
+            elem?.addEventListener("scroll", scrollEvent);
         });
     } else {
         setViewportScrollEvent(scrollEvent);
     }
+
+    onDestroy(() => {
+        if (modalContainerElem) {
+            modalContainerElem.removeEventListener("scroll", scrollEvent);
+        }
+        if (!args?.isModal) {
+            setViewportScrollEvent(null);
+        }
+    });
 </script>
 
 <MetaInfo subTitle="Закладки" />
@@ -209,7 +226,7 @@
         tabindex="-1"
         class="releases-container flex-column"
         class:modal-content={args?.isModal}
-        id:modal-bookmark={args?.isModal}
+        class:modal-bookmark={args?.isModal}
     >
         <div class="flex-row releases-title">
             <span>Всего {total_count}</span>
@@ -225,12 +242,18 @@
         {#await firstData}
             <Preloader />
         {:then Releases}
-            {#each Releases.content as Release}
-                <AnimeRowItem anime={Release} inModal={args?.isModal} />
-            {/each}
+            {#if Releases && Releases.content}
+                {#each Releases.content as Release}
+                    <AnimeRowItem anime={Release} inModal={args?.isModal} />
+                {/each}
+            {/if}
             {#each allData as Release}
                 <AnimeRowItem anime={Release} inModal={args?.isModal} />
             {/each}
+        {:catch error}
+            <div style="padding: 20px; text-align: center; color: var(--second-text-color);">
+                <span>Ошибка загрузки закладок</span>
+            </div>
         {/await}
     </div>
 {/if}

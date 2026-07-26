@@ -96,6 +96,172 @@
         });
     };
 
+    // Network Timeout Patch (8-second timeout for non-critical requests + cancellation manager)
+    const activeControllers = new Set();
+
+    window.cancelActiveRequests = function () {
+        for (const controller of activeControllers) {
+            controller.abort();
+        }
+        activeControllers.clear();
+    };
+
+    const originalFetch = window.fetch;
+    window.fetch = async function (url, options = {}) {
+        const urlStr = url.toString();
+        if (
+            urlStr.includes("localhost") ||
+            urlStr.includes("127.0.0.1") ||
+            urlStr.startsWith("file:") ||
+            urlStr.startsWith("anixflow:") ||
+            urlStr.startsWith("anixflow-cache:")
+        ) {
+            return originalFetch(url, options);
+        }
+
+        if (options.signal) {
+            return originalFetch(url, options);
+        }
+
+        const isCritical = 
+            urlStr.includes("/profile") || 
+            urlStr.includes("/auth") || 
+            urlStr.includes("/notification") || 
+            urlStr.includes("/settings") ||
+            urlStr.includes("/history") ||
+            urlStr.includes("/watch") ||
+            urlStr.includes("/favorite") ||
+            urlStr.includes("/list/") ||
+            urlStr.includes("/comment/") ||
+            urlStr.includes("/vote/");
+
+        const controller = new AbortController();
+        if (!isCritical) {
+            activeControllers.add(controller);
+        }
+
+        const timeoutId = setTimeout(() => {
+            controller.isTimeout = true;
+            controller.abort();
+        }, 8000);
+
+        try {
+            const res = await originalFetch(url, {
+                ...options,
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            activeControllers.delete(controller);
+            return res;
+        } catch (err) {
+            clearTimeout(timeoutId);
+            activeControllers.delete(controller);
+            if (err instanceof Error && err.name === 'AbortError' && controller.isTimeout) {
+                throw new Error('Timeout');
+            }
+            throw err;
+        }
+    };
+
+    const paginatedProps = new Set([
+        'filter', 'all', 'getCollectionFavorites', 'getCollectionReleases',
+        'getFriends', 'getVotedReleases', 'getBookmarks', 'getFavorites',
+        'getComments', 'getRelatedReleases', 'releases', 'getCommentReplies'
+    ]);
+
+    function getContentArray(r) {
+        if (r && Array.isArray(r.content)) return r.content;
+        if (r && r.releases && Array.isArray(r.releases.content)) return r.releases.content;
+        return null;
+    }
+
+    function setContentArray(r, arr) {
+        if (r && Array.isArray(r.content)) r.content = arr;
+        else if (r && r.releases && Array.isArray(r.releases.content)) r.releases.content = arr;
+    }
+
+    const pageIndex1Props = new Set([
+        'getCollectionReleases', 'getComments', 'getRelatedReleases', 
+        'getCommentReplies', 'getVotedReleases'
+    ]);
+
+    function wrapAnixApi(endpoints) {
+        const handler = {
+            get(target, prop) {
+                const val = target[prop];
+                if (typeof val === 'function') {
+                    return async function(...args) {
+                        if (!paginatedProps.has(prop)) {
+                            return val.apply(target, args);
+                        }
+
+                        let pageValue = -1;
+                        let pageIndex = -1;
+                        
+                        if (pageIndex1Props.has(prop)) {
+                            if (typeof args[1] === 'number') {
+                                pageValue = args[1]; pageIndex = 1;
+                            } else if (typeof args[1] === 'object' && args[1] !== null && typeof args[1].page === 'number') {
+                                pageValue = args[1].page; pageIndex = 'in_obj_1';
+                            }
+                        } else if (typeof args[0] === 'number') {
+                            pageValue = args[0]; pageIndex = 0;
+                        } else if (args[0] !== null && typeof args[0] === 'object' && typeof args[0].page === 'number') {
+                            pageValue = args[0].page; pageIndex = 'in_obj';
+                        } else if (args.length > 1) {
+                            if (typeof args[1] === 'number') {
+                                pageValue = args[1]; pageIndex = 1;
+                            } else if (typeof args[1] === 'object' && args[1] !== null && typeof args[1].page === 'number') {
+                                pageValue = args[1].page; pageIndex = 'in_obj_1';
+                            }
+                        }
+
+                        if (pageValue === -1) {
+                            return val.apply(target, args);
+                        }
+
+                        const pageA = pageValue * 2;
+                        const pageB = pageValue * 2 + 1;
+
+                        const argsA = JSON.parse(JSON.stringify(args));
+                        if (pageIndex === 0 || pageIndex === 1) argsA[pageIndex] = pageA;
+                        else if (pageIndex === 'in_obj') argsA[0].page = pageA;
+                        else if (pageIndex === 'in_obj_1') argsA[1].page = pageA;
+
+                        const argsB = JSON.parse(JSON.stringify(args));
+                        if (pageIndex === 0 || pageIndex === 1) argsB[pageIndex] = pageB;
+                        else if (pageIndex === 'in_obj') argsB[0].page = pageB;
+                        else if (pageIndex === 'in_obj_1') argsB[1].page = pageB;
+
+                        try {
+                            const [resA, resB] = await Promise.all([
+                                val.apply(target, argsA),
+                                val.apply(target, argsB).catch(() => null)
+                            ]);
+
+                            if (resA) {
+                                const contentA = getContentArray(resA);
+                                const contentB = resB ? getContentArray(resB) : null;
+                                if (contentA && contentB && Array.isArray(contentB)) {
+                                    setContentArray(resA, contentA.concat(contentB));
+                                }
+                                return resA;
+                            }
+                            return resA;
+                        } catch (e) {
+                            return val.apply(target, args);
+                        }
+                    };
+                }
+                if (typeof val === 'object' && val !== null) {
+                    return new Proxy(val, handler);
+                }
+                return val;
+            }
+        };
+        return new Proxy(endpoints, handler);
+    }
+
     /**
      * Глобальные переменные
      */
@@ -104,10 +270,10 @@
         .getVersions()
         .then((versions) => (window.versions = versions))
         .catch((e) => console.error("Error fetching versions:", e));
-    window.anixApi = new Anixart({
+    window.anixApi = wrapAnixApi(new Anixart({
         token: utoken?.token,
         baseUrl: `https://${endpointUrl}`,
-    }).endpoints;
+    }).endpoints);
     if (utoken?.token) {
         anixApi.client.token = utoken.token;
     }
@@ -276,11 +442,6 @@
     let viewInfo = {
         viewportComponent: HomePage,
         args: {typeReleases: 0},
-    };
-
-    $: viewInfo = {
-        viewportComponent: viewInfo.viewportComponent,
-        args: viewInfo.args
     };
 
     let viewInfoOld = {

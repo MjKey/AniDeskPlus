@@ -242,17 +242,15 @@ export default {
     },
 
     returnFormatedTime(time) {
+        if (isNaN(time) || time < 0) return "0:00";
         const h = Math.floor(time / 3600);
         const m = Math.floor((time % 3600) / 60);
         const s = Math.floor(time % 60);
 
-        return [h, m, s]
-            .map((x, i) => {
-                if (x == 0 && i == 0) return null;
-                return x >= 0 && x <= 9 ? `0${x}` : x;
-            })
-            .filter((x) => x !== null)
-            .join(":");
+        if (h > 0) {
+            return `${h}:${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+        }
+        return `${m}:${s < 10 ? '0' : ''}${s}`;
     },
 
     async checkGPUSupport() {

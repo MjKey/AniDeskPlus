@@ -2,19 +2,30 @@
     import AnimeRowItem from "../components/elements/AnimeFullRowCard.svelte";
     import MetaInfo from "../components/gui/MetaInfo.svelte";
     import Preloader from "../components/gui/Preloader.svelte";
+    import { onDestroy } from "svelte";
 
     export let args;
     let page = 0;
     let filterArgs = { sort: 0, status_id: null, category_id: null };
     let allData = [];
-    let firstData = anixApi.release.filter(page, filterArgs, true);
+    let firstData = anixApi.release.filter(page, filterArgs, true).catch((e) => {
+        console.error("Home filter error:", e);
+        return { content: [] };
+    });
 
     let updateInfo = false;
 
     async function getMainPage() {
-        const data = await anixApi.release.filter(page, filterArgs, true);
-        allData = allData.concat(data.content);
-        updateInfo = false;
+        try {
+            const data = await anixApi.release.filter(page, filterArgs, true);
+            if (data?.content) {
+                allData = allData.concat(data.content);
+            }
+        } catch (e) {
+            console.error("Home getMainPage error:", e);
+        } finally {
+            updateInfo = false;
+        }
     }
 
     function setReleasesType(type) {
@@ -50,8 +61,13 @@
                 break;
         }
 
-        firstData = anixApi.release.filter(page, filterArgs, true);
-        viewport.scrollTop = 0;
+        firstData = anixApi.release.filter(page, filterArgs, true).catch((e) => {
+            console.error("Home filter type error:", e);
+            return { content: [] };
+        });
+        if (viewport) {
+            viewport.scrollTop = 0;
+        }
     }
 
     setViewportScrollEvent(async (e) => {
@@ -65,6 +81,10 @@
             page++;
             await getMainPage();
         }
+    });
+
+    onDestroy(() => {
+        setViewportScrollEvent(null);
     });
 </script>
 
@@ -101,12 +121,18 @@
     {#await firstData}
         <Preloader />
     {:then Releases}
-        {#each Releases.content as Release}
-            <AnimeRowItem anime={Release} />
-        {/each}
+        {#if Releases && Releases.content}
+            {#each Releases.content as Release}
+                <AnimeRowItem anime={Release} />
+            {/each}
+        {/if}
         {#each allData as Release}
             <AnimeRowItem anime={Release} />
         {/each}
+    {:catch error}
+        <div style="padding: 20px; text-align: center; color: var(--second-text-color);">
+            <span>Ошибка загрузки релизов</span>
+        </div>
     {/await}
 </div>
 

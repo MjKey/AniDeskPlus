@@ -57,6 +57,11 @@
     let isPaused = false;
     let isTimePosClick = false;
     let isFullscreen = false;
+    let isPiPActive = false;
+    let autoPipActivated = false;
+
+    const handleEnterPiP = () => { isPiPActive = true; };
+    const handleLeavePiP = () => { isPiPActive = false; autoPipActivated = false; };
 
     let skipTimes = { op: null, ed: null };
     let activeSkipType = null;
@@ -77,8 +82,6 @@
     let activeEpisodeRequestId = 0;
     let showReloadHint = false;
     let reloadHintTimeout = null;
-    let isPiPActive = false;
-    let autoPipActivated = false;
 
     async function togglePiP() {
         if (!video) return;
@@ -512,45 +515,52 @@
             return;
         }
 
-        switch (source.name) {
-            case "Kodik":
-                let aQ = {};
-                const kLinks = await KodikParser.getDirectLinks(episode.url);
-                for (const [key, value] of Object.entries(kLinks || {})) {
-                    const cleanKey = String(key).replace(/p$/i, '');
-                    const srcUrl = Array.isArray(value) ? value[0]?.src : value?.src;
-                    if (srcUrl) {
-                        aQ[cleanKey] = { src: srcUrl };
+        try {
+            switch (source.name) {
+                case "Kodik":
+                    let aQ = {};
+                    const kLinks = await KodikParser.getDirectLinks(episode.url);
+                    for (const [key, value] of Object.entries(kLinks || {})) {
+                        const cleanKey = String(key).replace(/p$/i, '');
+                        const srcUrl = Array.isArray(value) ? value[0]?.src : value?.src;
+                        if (srcUrl) {
+                            aQ[cleanKey] = { src: srcUrl };
+                        }
                     }
-                }
-                availableQuality = aQ;
-                break;
+                    availableQuality = aQ;
+                    break;
 
-            case "Liberty":
-            case "Libria":
-                await utils.fallback(async () => {
-                    availableQuality = await window.prc.parseLibria(
-                        episode.url,
-                    );
-                    if (!availableQuality) return false;
-                    return true;
-                }, 3);
-                break;
+                case "Liberty":
+                case "Libria":
+                    await utils.fallback(async () => {
+                        availableQuality = await window.prc.parseLibria(
+                            episode.url,
+                        );
+                        if (!availableQuality) return false;
+                        return true;
+                    }, 3);
+                    break;
 
-            case "Sibnet":
-                await utils.fallback(async () => {
-                    const link = await (SibnetParser.getDirectLinks ? SibnetParser.getDirectLinks(episode.url) : SibnetParser.getDirectLink(episode.url));
-                    if (!link) return false;
+                case "Sibnet":
+                    await utils.fallback(async () => {
+                        const link = await (SibnetParser.getDirectLinks ? SibnetParser.getDirectLinks(episode.url) : SibnetParser.getDirectLink(episode.url));
+                        if (!link) return false;
 
-                    const srcUrl = typeof link === 'string' ? link : (link["720"]?.src || link["720"]?.[0]?.src || link.src || link);
-                    availableQuality = {
-                        "720": {
-                            src: srcUrl,
-                        },
-                    };
-                    return true;
-                }, 3);
-                break;
+                        const srcUrl = typeof link === 'string' ? link : (link["720"]?.src || link["720"]?.[0]?.src || link.src || link);
+                        availableQuality = {
+                            "720": {
+                                src: srcUrl,
+                            },
+                        };
+                        return true;
+                    }, 3);
+                    break;
+            }
+        } catch (err) {
+            console.error("[Player] Error parsing episode source:", err);
+            resumeToastMessage = "Ошибка загрузки источника видео";
+            clearTimeout(resumeToastTimeout);
+            resumeToastTimeout = setTimeout(() => { resumeToastMessage = null; }, 5000);
         }
 
         if (requestId !== activeEpisodeRequestId) return;
@@ -602,20 +612,17 @@
 
         currentEpisode = args.currentEpisode;
 
-        mainDiv = await waitForElm(".anidesk-player");
-        video = await waitForElm(".player-video");
+        if (!mainDiv) mainDiv = document.querySelector(".anidesk-player");
+        if (!video) video = document.querySelector(".player-video");
 
-        hlsManager.init(video, (percent) => {
-            loadedPercent = percent;
-        });
+        if (video) {
+            hlsManager.init(video, (percent) => {
+                loadedPercent = percent;
+            });
 
-        video.addEventListener("enterpictureinpicture", () => {
-            isPiPActive = true;
-        });
-        video.addEventListener("leavepictureinpicture", () => {
-            isPiPActive = false;
-            autoPipActivated = false;
-        });
+            video.addEventListener("enterpictureinpicture", handleEnterPiP);
+            video.addEventListener("leavepictureinpicture", handleLeavePiP);
+        }
 
         const syncDuration = () => {
             if (video && video.duration && !isNaN(video.duration) && video.duration > 0) {
@@ -852,6 +859,8 @@
         }
 
         if (video) {
+            video.removeEventListener("enterpictureinpicture", handleEnterPiP);
+            video.removeEventListener("leavepictureinpicture", handleLeavePiP);
             if (!video.muted) {
                 volumeManager.syncPersistedVolume(video, playerSettings, persistPlayerSettings);
             }
@@ -872,7 +881,7 @@
     });
 </script>
 
-<div class="anidesk-player full" style="--video-aspect: {videoAspect};">
+<div bind:this={mainDiv} class="anidesk-player full" style="--video-aspect: {videoAspect};">
     <PlayerGui
         {playVideo}
         {args}
@@ -932,12 +941,14 @@
 
     {#if availableGPU}
         <canvas
+            bind:this={canvas}
             class="player-canvas {aspectRatio}"
             width={screen.width}
             height={screen.height}
         ></canvas>
     {/if}
     <video
+        bind:this={video}
         class="player-video {aspectRatio}"
         crossorigin="anonymous"
         class:full={!availableGPU}

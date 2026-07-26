@@ -27,29 +27,31 @@
     import { onDestroy } from "svelte";
 
     export let args;
-    const release = anixApi.release.info(args.id, true);
+    let isLeftScrollHovered = false;
 
-    release.then((data) => {
+    $: releasePromise = (async () => {
+        const data = await anixApi.release.info(args.id, true);
         if (data && data.release) {
             favoriteCount = data.release.favorites_count;
             isFavorite = data.release.is_favorite;
+            discordRPC.setActivity({
+                type: 3,
+                state: "На странице релиза",
+                details: (data.release.title_ru || "").slice(0, 127),
+                largeImageKey: "anidesk-transparent",
+                largeImageText: "AniXFlow - Anixart Client",
+                instance: true,
+                buttons: [
+                    {
+                        label: "Ссылка на релиз",
+                        url: `https://anixart.app/release/${data.release.id}`,
+                    },
+                    { label: "Ссылка на клиент", url: "https://github.com/MjKey/AniXFlow" },
+                ],
+            });
         }
-        discordRPC.setActivity({
-            type: 3,
-            state: "На странице релиза",
-            details: data.release.title_ru.slice(0, 127),
-            largeImageKey: "anidesk-transparent",
-            largeImageText: "AniXFlow - Anixart Client",
-            instance: true,
-            buttons: [
-                {
-                    label: "Ссылка на релиз",
-                    url: `https://anixart.app/release/${data.release.id}`,
-                },
-                { label: "Ссылка на клиент", url: "https://github.com/MjKey/AniXFlow" },
-            ],
-        });
-    }).catch((e) => console.error("Error loading release:", e));
+        return data;
+    })();
 
     let showSelectEpisodeModal,
         showCommentsModal,
@@ -91,10 +93,10 @@
     }
 </script>
 
-{#await release}
+{#await releasePromise}
     <Preloader />
 {:then r}
-    {#if r.release == null || r.code == 2}
+    {#if r == null || r.release == null || r.code == 2}
         <NotFound />
     {:else}
         {#key modalSubTitle}
@@ -107,17 +109,10 @@
         <div class="release flex-row" tabindex="-1">
             <div
                 tabindex="-1"
-                class="left-info-release hide-scroll flex-column"
-                onmouseenter={() => {
-                    document
-                        .querySelector(".left-info-release")
-                        .classList.remove("hide-scroll");
-                }}
-                onmouseleave={() => {
-                    document
-                        .querySelector(".left-info-release")
-                        .classList.add("hide-scroll");
-                }}
+                class="left-info-release flex-column"
+                class:hide-scroll={!isLeftScrollHovered}
+                onmouseenter={() => (isLeftScrollHovered = true)}
+                onmouseleave={() => (isLeftScrollHovered = false)}
             >
                 <AnimePoster
                     size={{ width: 387, height: 567 }}
@@ -339,6 +334,11 @@
             on:closeModal={() => (showNotAvailableModal = false)}
         />
     {/if}
+{:catch error}
+    <div style="padding: 40px; text-align: center; color: var(--second-text-color);">
+        <h2>Ошибка загрузки релиза</h2>
+        <p>{error?.message || "Не удалось получить данные о релизе"}</p>
+    </div>
 {/await}
 
 <style>

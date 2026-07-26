@@ -172,22 +172,30 @@ function initDownloader(mainWindow) {
                 const tmpPath = offlineLibraryPath + '.tmp';
                 await fs.promises.writeFile(tmpPath, JSON.stringify(lib, null, 2));
                 await fs.promises.rename(tmpPath, offlineLibraryPath);
+            }).catch(err => {
+                logDownload('ERROR', `Failed to write library for ${downloadId}: ${err.message}`);
             });
 
             delete activeDownloads[downloadId];
             sendProgress(100);
-            activeDownloadsCount--;
+            activeDownloadsCount = Math.max(0, activeDownloadsCount - 1);
             processQueue();
         };
 
         const failDownload = async (err, silent = false) => {
+            if (!activeDownloads[downloadId]) return;
+
             silent = silent || item.cancelled;
             const msg = err ? err.message || String(err) : 'Cancelled';
             if (!silent) logDownload('ERROR', `Failed ${downloadId}: ${msg}`);
             else         logDownload('CANCEL', `Cancelled ${downloadId}`);
 
-            if (item.fileStream && !item.fileStream.closed) {
-                await new Promise(resolve => item.fileStream.close(resolve));
+            if (item.fileStream) {
+                try {
+                    if (!item.fileStream.closed && !item.fileStream.destroyed) {
+                        item.fileStream.destroy();
+                    }
+                } catch (_) {}
             }
             if (fs.existsSync(item.filePath)) {
                 try {
@@ -204,7 +212,7 @@ function initDownloader(mainWindow) {
                 sendError(msg);
             }
             
-            activeDownloadsCount--;
+            activeDownloadsCount = Math.max(0, activeDownloadsCount - 1);
             processQueue();
         };
 
