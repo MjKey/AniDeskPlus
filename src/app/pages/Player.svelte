@@ -456,9 +456,13 @@
     }
 
     async function changeQuality(quality) {
-        const qualitySrc = args.availableQuality[String(quality)]?.src;
+        const qualityStr = String(quality);
+        const qualitySrc = args.availableQuality?.[qualityStr]?.src;
         if (!qualitySrc) return;
-        hlsManager.changeQuality(qualitySrc);
+        args.currentQuality = qualityStr;
+        const realSrc = qualitySrc.startsWith('//') ? `https:${qualitySrc}` : qualitySrc;
+        args.src = realSrc;
+        hlsManager.changeQuality(realSrc);
     }
 
     function changeSleepTimer(config) {
@@ -565,15 +569,22 @@
 
         if (requestId !== activeEpisodeRequestId) return;
 
-        const url =
-            availableQuality?.[String(playingSettings.defaultQuality)]?.src ??
-            availableQuality?.["1080"]?.src ??
-            availableQuality?.["720"]?.src ??
-            availableQuality?.["480"]?.src ??
-            availableQuality?.["360"]?.src ??
-            Object.values(availableQuality || {})[0]?.src;
-
         args.availableQuality = availableQuality || {};
+        const availableKeys = Object.keys(availableQuality || {});
+        let selectedQuality = String(playingSettings?.defaultQuality || "720");
+
+        if (!availableQuality?.[selectedQuality]) {
+            if (availableQuality?.["1080"]) selectedQuality = "1080";
+            else if (availableQuality?.["720"]) selectedQuality = "720";
+            else if (availableQuality?.["480"]) selectedQuality = "480";
+            else if (availableQuality?.["360"]) selectedQuality = "360";
+            else if (availableKeys.length > 0) selectedQuality = availableKeys[0];
+            else selectedQuality = "720";
+        }
+
+        args.currentQuality = selectedQuality;
+        const url = availableQuality?.[selectedQuality]?.src || Object.values(availableQuality || {})[0]?.src;
+
         if (url) {
             link = url.startsWith('//') ? `https:${url}` : url;
             hlsManager.loadSource(link, true);

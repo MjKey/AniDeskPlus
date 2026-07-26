@@ -78,7 +78,7 @@
                     }}
                 >
                     <span class="btn-title">Качество:</span>
-                    <span>{currentSettings.currentQuality}p →</span>
+                    <span class="setting-val-badge">{currentSettings.currentQuality}p <span class="chevron-icon">›</span></span>
                 </button>
                 <div class="player-settings-element" class:disabled={!upscaleSettings.enabled || !availableGPU}>
                     <span class="btn-title">Улучшение качества:</span>
@@ -117,7 +117,7 @@
                     }}
                 >
                     <span class="btn-title">Соотношение сторон:</span>
-                    <span>{currentSettings.aspectRatio} →</span>
+                    <span class="setting-val-badge">{currentSettings.aspectRatio} <span class="chevron-icon">›</span></span>
                 </button>
                 <button
                     class="player-settings-element"
@@ -127,10 +127,10 @@
                     }}
                 >
                     <span class="btn-title">Скорость:</span>
-                    <span
+                    <span class="setting-val-badge"
                         >{utils.playerSpeedValues.find(
                             (x) => x.value == (video?.playbackRate || currentSettings?.defaultPlaybackRate || playerSettings?.defaultPlaybackRate || 1.0),
-                        )?.label ?? (video?.playbackRate || currentSettings?.defaultPlaybackRate || playerSettings?.defaultPlaybackRate || 1.0)} →</span
+                        )?.label ?? (video?.playbackRate || currentSettings?.defaultPlaybackRate || playerSettings?.defaultPlaybackRate || 1.0)} <span class="chevron-icon">›</span></span
                     >
                 </button>
                 <button
@@ -141,7 +141,7 @@
                     }}
                 >
                     <span class="btn-title">Таймер сна:</span>
-                    <span>{currentSettings.sleepTimerLabel ?? "Выкл"} →</span>
+                    <span class="setting-val-badge">{currentSettings.sleepTimerLabel ?? "Выкл"} <span class="chevron-icon">›</span></span>
                 </button>
             </div>
         {:else if page === 1}
@@ -157,7 +157,7 @@
                         page = 0;
                     }}
                 >
-                    ← Назад
+                    <span class="chevron-back">‹</span> Назад
                 </button>
                 {#each Object.keys(currentSettings.availableQuality || {}).reverse() as option}
                     <button
@@ -185,7 +185,7 @@
                         page = 0;
                     }}
                 >
-                    ← Назад
+                    <span class="chevron-back">‹</span> Назад
                 </button>
                 {#each utils.aspectRatioValues as option}
                     <button
@@ -214,7 +214,7 @@
                         page = 0;
                     }}
                 >
-                    ← Назад
+                    <span class="chevron-back">‹</span> Назад
                 </button>
                 {#each utils.playerSpeedValues as option}
                     <button
@@ -243,7 +243,7 @@
                         page = 0;
                     }}
                 >
-                    ← Назад
+                    <span class="chevron-back">‹</span> Назад
                 </button>
                 {#each utils.sleepTimerDurationValues as option}
                     <button
@@ -265,7 +265,7 @@
                     }}
                 >
                     <span class="btn-title">Свой вариант...</span>
-                    <span>→</span>
+                    <span class="chevron-icon">›</span>
                 </button>
             </div>
         {:else if page === 5}
@@ -281,7 +281,7 @@
                         page = 4;
                     }}
                 >
-                    ← Назад
+                    <span class="chevron-back">‹</span> Назад
                 </button>
                 <div class="custom-timer-block">
                     <span class="custom-label">Через N минут:</span>
@@ -354,6 +354,34 @@
 
     .player-settings-element:hover {
         background-color: var(--alt-background-color);
+    }
+
+    .setting-val-badge {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--secondary-text-color);
+        font-size: 13px;
+    }
+
+    .chevron-icon {
+        font-size: 16px;
+        font-weight: 300;
+        line-height: 1;
+        opacity: 0.6;
+        transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+
+    .player-settings-element:hover .chevron-icon {
+        opacity: 1;
+        transform: translateX(2px);
+    }
+
+    .chevron-back {
+        font-size: 18px;
+        font-weight: 300;
+        margin-right: 6px;
+        line-height: 1;
     }
 
     .custom-timer-block {
