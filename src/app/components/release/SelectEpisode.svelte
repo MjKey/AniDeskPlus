@@ -445,6 +445,21 @@
                         const epPos = d.position || d.id;
                         const offlineEp = (offlineLibrary.find(a => a.id === args.id)?.episodes || []).find(e => e.id === epPos);
                         if (offlineEp) {
+                            const libAnime = offlineLibrary.find(a => a.id === args.id);
+                            const downloadedEps = libAnime?.episodes || [];
+                            const episodesMock = i.episodes.map(epItem => {
+                                const posId = epItem.position || epItem.id;
+                                const matchOff = downloadedEps.find(e => e.id === posId);
+                                if (matchOff) {
+                                    const epHex = Array.from(new TextEncoder().encode(matchOff.filePath)).map(b => b.toString(16).padStart(2, '0')).join('');
+                                    return {
+                                        ...epItem,
+                                        url: `anixflow://${epHex}`,
+                                        isOffline: true
+                                    };
+                                }
+                                return epItem;
+                            });
                             const hexPath = Array.from(new TextEncoder().encode(offlineEp.filePath)).map(b => b.toString(16).padStart(2, '0')).join('');
                             const offlineUrl = `anixflow://${hexPath}`;
                             updateViewportComponent(Pages.PLAYER, {
@@ -452,8 +467,8 @@
                                 currentQuality: 720,
                                 availableQuality: { "720": { src: offlineUrl } },
                                 release: args,
-                                episodes: i.episodes,
-                                currentEpisode: d,
+                                episodes: episodesMock,
+                                currentEpisode: { ...d, url: offlineUrl },
                                 isOffline: true
                             });
                             return;

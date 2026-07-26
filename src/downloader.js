@@ -473,6 +473,12 @@ function initDownloader(mainWindow) {
     ipcMain.handle("offline:cancelDownload", (_, animeId, episodeId) => {
         const downloadId = `${animeId}_${episodeId}`;
         const item = activeDownloads[downloadId];
+
+        const qIdx = downloadQueue.indexOf(downloadId);
+        if (qIdx !== -1) {
+            downloadQueue.splice(qIdx, 1);
+        }
+
         if (!item) return false;
 
         logDownload('CANCEL', `User cancelled: ${downloadId}`);

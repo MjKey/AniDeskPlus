@@ -172,12 +172,16 @@ async function handleAnixflowCacheRequest(req) {
       }
 
       const buffer = await cacheInFlight.get(filePath);
-      if (!buffer) return new Response(null, { status: 502 });
+      if (!buffer) {
+        const fallbackSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450" viewBox="0 0 300 450"><rect width="100%" height="100%" fill="#1a1a24"/><text x="50%" y="50%" fill="#666688" font-family="sans-serif" font-size="14" text-anchor="middle">Нет изображения</text></svg>`;
+        return new Response(fallbackSvg, { headers: { 'Content-Type': 'image/svg+xml' } });
+      }
       return new Response(buffer, { headers: { 'Content-Type': 'image/jpeg' } });
     }
   } catch (e) {
     console.error("Cache protocol error:", e);
-    return new Response(null, { status: 500 });
+    const fallbackSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450" viewBox="0 0 300 450"><rect width="100%" height="100%" fill="#1a1a24"/><text x="50%" y="50%" fill="#666688" font-family="sans-serif" font-size="14" text-anchor="middle">Нет изображения</text></svg>`;
+    return new Response(fallbackSvg, { headers: { 'Content-Type': 'image/svg+xml' } });
   }
 }
 

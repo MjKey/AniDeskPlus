@@ -97,6 +97,16 @@ describe('Downloader Engine Unit Tests', () => {
             expect(qManager.activeCount).toBe(2);
             expect(qManager.registry.get('task3').status).toBe('downloading');
         });
+
+        it('should cleanly remove task from queue if cancelled while queued', () => {
+            qManager.add('task1', { url: '1.mp4' });
+            qManager.add('task2', { url: '2.mp4' });
+            qManager.add('task3', { url: '3.mp4' });
+
+            expect(qManager.queue).toContain('task3');
+            qManager.cancel('task3');
+            expect(qManager.queue).not.toContain('task3');
+        });
     });
 
     describe('Atomic File Storage Logic', () => {

@@ -4,6 +4,7 @@
     import MetaInfo from "../components/gui/MetaInfo.svelte";
     import PlayIcon from "../icons/play.svg";
     import { downloadProgressStore } from "../components/stores/downloadProgressStore";
+    import { Pages } from "../pages.js";
 
     export let args;
 
@@ -19,12 +20,15 @@
         const offlineUrl = `anixflow://${hexPath}`;
 
         const mockSource = { id: 0, name: 'Offline', type: { id: 0, name: 'Оффлайн' }, '@id': 0 };
-        const episodesMock = (args.anime.episodes || []).map(e => ({
-            position: e.id,
-            name: e.title,
-            source: mockSource,
-            url: offlineUrl
-        }));
+        const episodesMock = (args.anime.episodes || []).map(e => {
+            const epHex = Array.from(new TextEncoder().encode(e.filePath)).map(b => b.toString(16).padStart(2, '0')).join('');
+            return {
+                position: e.id,
+                name: e.title,
+                source: mockSource,
+                url: `anixflow://${epHex}`
+            };
+        });
         const currentEpisodeMock = {
             position: ep.id,
             name: ep.title,
@@ -32,10 +36,10 @@
             url: offlineUrl
         };
         
-        updateViewportComponent(11, {
+        updateViewportComponent(Pages.PLAYER, {
             src: offlineUrl,
             currentQuality: 720,
-            avaliableQuality: { "720": { src: offlineUrl } },
+            availableQuality: { "720": { src: offlineUrl } },
             release: { ...args.anime, title_ru: args.anime.title_ru || args.anime.title || 'Аниме' },
             episodes: episodesMock,
             currentEpisode: currentEpisodeMock,
@@ -49,7 +53,7 @@
             downloadProgressStore.update(s => { delete s[`${args.anime.id}_${ep.id}`]; return { ...s }; });
             args.anime.episodes = args.anime.episodes.filter(e => e.id !== ep.id);
             if (args.anime.episodes.length === 0) {
-                updateViewportComponent(13);
+                updateViewportComponent(Pages.OFFLINE);
             }
         }
     }
@@ -85,7 +89,7 @@
                 title="Назад к загрузкам"
                 backgroundColor="var(--alt-background-color)"
                 hoverColor="var(--background-color)"
-                onClickCallback={() => updateViewportComponent(13)}
+                onClickCallback={() => updateViewportComponent(Pages.OFFLINE)}
             />
         </div>
     </div>

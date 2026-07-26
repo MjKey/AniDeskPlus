@@ -1,0 +1,45 @@
+name: Beta Build Artifacts
+
+on:
+  push:
+    branches:
+      - BETA
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-beta:
+    name: Build Beta (Windows)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Run Unit Tests
+        run: npm test
+
+      - name: Build and Package Beta App
+        run: npm run buildAndMake
+        env:
+          SHIKIMORI_CLIENT_ID: ${{ secrets.SHIKIMORI_CLIENT_ID }}
+          SHIKIMORI_CLIENT_SECRET: ${{ secrets.SHIKIMORI_CLIENT_SECRET }}
+
+      - name: Upload Beta Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: AniXFlow-BETA-Windows
+          path: out/make/**/*
+          retention-days: 14
