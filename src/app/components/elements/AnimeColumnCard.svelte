@@ -12,7 +12,7 @@
     </div>
     <div class="anime-item-title">{anime.title_ru}</div>
     <slot></slot>
-    <div class="anime-item-epCount flex-row">{utils.returnEpisodeString(anime)} эп. {#if utils.returnEpisodeString(anime) != "?" && anime.status?.id !== 3}<Dot size={{width: 4, height: 4}} />{anime.grade.toFixed(2)} ★{/if}</div>
+    <div class="anime-item-epCount flex-row">{utils.returnEpisodeString(anime)} эп. {#if utils.returnEpisodeString(anime) != "?" && anime.status?.id !== 3}<Dot size={{width: 4, height: 4}} />{(anime.grade != null ? Number(anime.grade).toFixed(2) : '0.00')} ★{/if}</div>
 </anime-column-card>
 
 <style>

@@ -180,7 +180,7 @@
                         <div class="flex-row" style="width: 100%; justify-content: space-between; align-items: center;">
                             <div class="rate-text">
                                 <span class="rating-text">Рейтинг</span>
-                                <span class="rate">{r.release.grade.toFixed(2)}</span>
+                                <span class="rate">{(r.release.grade != null ? Number(r.release.grade).toFixed(2) : '0.00')}</span>
                                 <div class="rate-vote-text">
                                     <span class="rating-votes">{r.release.vote_count}</span> голосов
                                 </div>

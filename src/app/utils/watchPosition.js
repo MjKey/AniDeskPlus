@@ -73,9 +73,9 @@ export function savePosition(releaseId, episode, currentTime, duration) {
         releaseId,
         episodeNum: getEpisodeNumber(episode),
         episodeId: episode.id || null,
-        time: isCompleted ? 0 : Number(currentTime.toFixed(1)),
-        duration: Number(duration.toFixed(1)),
-        percentage: isCompleted ? 100 : Number(percentage.toFixed(1)),
+        time: isCompleted ? 0 : Number((currentTime || 0).toFixed(1)),
+        duration: Number((duration || 0).toFixed(1)),
+        percentage: isCompleted ? 100 : Number((percentage || 0).toFixed(1)),
         completed: isCompleted,
         updatedAt: Date.now()
     };

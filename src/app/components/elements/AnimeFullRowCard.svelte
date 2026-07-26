@@ -32,7 +32,7 @@
                 {utils.returnEpisodeString(anime)} эп.
                 {#if showRating}
                     <Dot size={{width: 4, height: 4}} />
-                    {anime.grade.toFixed(2)} ★
+                    {(anime.grade != null ? Number(anime.grade).toFixed(2) : '0.00')} ★
                 {/if}
             {/if}
         </div>

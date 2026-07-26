@@ -17,7 +17,7 @@
         {/if}
         
         {#if anime.status.id !== 3}
-            <div class="related-anime-item-date">{anime.year} г. <Dot size={{width: 3, height: 3}}/> {anime.grade.toFixed(2)} ★</div>
+            <div class="related-anime-item-date">{anime.year} г. <Dot size={{width: 3, height: 3}}/> {(anime.grade != null ? Number(anime.grade).toFixed(2) : '0.00')} ★</div>
         {/if}
         <div class="related-anime-item-type">{anime.category.name}</div>
     </div>

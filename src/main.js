@@ -871,22 +871,49 @@ ipcMain.handle("shikimori:exchangeCode", async (_, { authCode, domain }) => {
   const SHIKI_CLIENT_ID = process.env.SHIKIMORI_CLIENT_ID || '';
   const SHIKI_CLIENT_SECRET = process.env.SHIKIMORI_CLIENT_SECRET || '';
   const SHIKI_REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob";
+  const userAgent = "AniXFlowApp/1.1 (Desktop; Windows; https://github.com/MjKey/AniXFlow)";
 
   try {
     const tokenUrl = `https://${domain || 'shikimori.io'}/oauth/token`;
-    const res = await net.fetch(tokenUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        grant_type: "authorization_code",
-        client_id: SHIKI_CLIENT_ID,
-        client_secret: SHIKI_CLIENT_SECRET,
-        code: authCode.trim(),
-        redirect_uri: SHIKI_REDIRECT_URI
-      })
+    const params = new URLSearchParams({
+      grant_type: "authorization_code",
+      client_id: SHIKI_CLIENT_ID,
+      client_secret: SHIKI_CLIENT_SECRET,
+      code: authCode.trim(),
+      redirect_uri: SHIKI_REDIRECT_URI
     });
 
-    if (!res.ok) return null;
+    let res = await net.fetch(tokenUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": userAgent
+      },
+      body: params.toString()
+    });
+
+    if (!res.ok) {
+      res = await net.fetch(tokenUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": userAgent
+        },
+        body: JSON.stringify({
+          grant_type: "authorization_code",
+          client_id: SHIKI_CLIENT_ID,
+          client_secret: SHIKI_CLIENT_SECRET,
+          code: authCode.trim(),
+          redirect_uri: SHIKI_REDIRECT_URI
+        })
+      });
+    }
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      console.error(`Shikimori exchangeCode HTTP ${res.status}:`, errText);
+      return null;
+    }
     return await res.json();
   } catch (e) {
     console.error("Shikimori OAuth error:", e);
@@ -899,21 +926,47 @@ ipcMain.handle("shikimori:refreshToken", async (_, { refreshToken, domain }) => 
 
   const SHIKI_CLIENT_ID = process.env.SHIKIMORI_CLIENT_ID || '';
   const SHIKI_CLIENT_SECRET = process.env.SHIKIMORI_CLIENT_SECRET || '';
+  const userAgent = "AniXFlowApp/1.1 (Desktop; Windows; https://github.com/MjKey/AniXFlow)";
 
   try {
     const tokenUrl = `https://${domain || 'shikimori.io'}/oauth/token`;
-    const res = await net.fetch(tokenUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        grant_type: "refresh_token",
-        client_id: SHIKI_CLIENT_ID,
-        client_secret: SHIKI_CLIENT_SECRET,
-        refresh_token: refreshToken.trim()
-      })
+    const params = new URLSearchParams({
+      grant_type: "refresh_token",
+      client_id: SHIKI_CLIENT_ID,
+      client_secret: SHIKI_CLIENT_SECRET,
+      refresh_token: refreshToken.trim()
     });
 
-    if (!res.ok) return null;
+    let res = await net.fetch(tokenUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": userAgent
+      },
+      body: params.toString()
+    });
+
+    if (!res.ok) {
+      res = await net.fetch(tokenUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": userAgent
+        },
+        body: JSON.stringify({
+          grant_type: "refresh_token",
+          client_id: SHIKI_CLIENT_ID,
+          client_secret: SHIKI_CLIENT_SECRET,
+          refresh_token: refreshToken.trim()
+        })
+      });
+    }
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      console.error(`Shikimori refreshToken HTTP ${res.status}:`, errText);
+      return null;
+    }
     return await res.json();
   } catch (e) {
     console.error("Shikimori refresh token error:", e);
