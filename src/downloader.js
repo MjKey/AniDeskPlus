@@ -8,10 +8,24 @@ const ffmpegInstaller = require('@ffmpeg-installer/ffmpeg');
 
 // ── ffmpeg path fix (app.asar → app.asar.unpacked) ──────────────────────────
 let ffmpegPath = ffmpegInstaller.path;
-if (ffmpegPath.includes('app.asar')) {
+if (ffmpegPath && ffmpegPath.includes('app.asar')) {
     ffmpegPath = ffmpegPath.replace('app.asar', 'app.asar.unpacked');
 }
-ffmpeg.setFfmpegPath(ffmpegPath);
+
+function getValidFFmpegPath() {
+    if (fs.existsSync(ffmpegPath)) return ffmpegPath;
+    try {
+        const resourceUnpacked = path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', '@ffmpeg-installer', 'win32-x64', 'ffmpeg.exe');
+        if (fs.existsSync(resourceUnpacked)) return resourceUnpacked;
+    } catch (_) {}
+    try {
+        const localUnpacked = path.join(__dirname, '..', 'node_modules', '@ffmpeg-installer', 'win32-x64', 'ffmpeg.exe');
+        if (fs.existsSync(localUnpacked)) return localUnpacked;
+    } catch (_) {}
+    return ffmpegPath;
+}
+
+ffmpeg.setFfmpegPath(getValidFFmpegPath());
 
 // ── paths ────────────────────────────────────────────────────────────────────
 const offlineLibraryPath = path.join(app.getPath("userData"), "offline_library.json");
@@ -231,13 +245,16 @@ function initDownloader(mainWindow) {
 
         logDownload('INFO', `Headers — UA: ${userAgent} | Referer: ${referer}`);
 
-        if (item.url.includes('.m3u8')) {
-            logDownload('FFMPEG', `Using ffmpeg for HLS stream: ${item.url}`);
-            logDownload('FFMPEG', `ffmpeg binary path: ${ffmpegPath}`);
+        const isHlsStream = item.url.includes('m3u8') || item.url.includes(':hls:');
 
-            if (!fs.existsSync(ffmpegPath)) {
-                logDownload('FFMPEG', `CRITICAL: ffmpeg binary NOT FOUND at path: ${ffmpegPath}`);
-                failDownload(new Error(`ffmpeg not found at: ${ffmpegPath}`));
+        if (isHlsStream) {
+            const activeFfmpegPath = getValidFFmpegPath();
+            logDownload('FFMPEG', `Using ffmpeg for HLS stream: ${item.url}`);
+            logDownload('FFMPEG', `ffmpeg binary path: ${activeFfmpegPath}`);
+
+            if (!fs.existsSync(activeFfmpegPath)) {
+                logDownload('FFMPEG', `CRITICAL: ffmpeg binary NOT FOUND at path: ${activeFfmpegPath}`);
+                failDownload(new Error(`ffmpeg not found at: ${activeFfmpegPath}`));
                 return;
             }
 
@@ -256,18 +273,31 @@ function initDownloader(mainWindow) {
                 })
                 .on('codecData', data => {
                     logDownload('FFMPEG', `Codec data: ${JSON.stringify(data)}`);
-                    if (data.duration) {
+                    if (data.duration && data.duration !== 'N/A') {
                         const parts = data.duration.split(':');
-                        duration = (parseInt(parts[0], 10) * 3600) + (parseInt(parts[1], 10) * 60) + parseFloat(parts[2]);
-                        logDownload('FFMPEG', `Duration detected: ${duration}s`);
+                        if (parts.length === 3) {
+                            duration = (parseInt(parts[0], 10) * 3600) + (parseInt(parts[1], 10) * 60) + parseFloat(parts[2]);
+                            logDownload('FFMPEG', `Duration detected: ${duration}s`);
+                        }
                     }
                 })
                 .on('progress', progress => {
                     logDownload('FFMPEG', `Progress: ${JSON.stringify(progress)}`);
-                    if (duration > 0 && progress.timemark) {
+                    let pct = 0;
+                    if (progress.percent && !isNaN(progress.percent) && progress.percent > 0) {
+                        pct = Math.min(progress.percent, 99);
+                    } else if (progress.timemark) {
                         const parts = progress.timemark.split(':');
-                        const cur = (parseInt(parts[0], 10) * 3600) + (parseInt(parts[1], 10) * 60) + parseFloat(parts[2]);
-                        const pct = Math.min((cur / duration) * 100, 99);
+                        if (parts.length === 3) {
+                            const cur = (parseInt(parts[0], 10) * 3600) + (parseInt(parts[1], 10) * 60) + parseFloat(parts[2]);
+                            if (duration > 0) {
+                                pct = Math.min((cur / duration) * 100, 99);
+                            } else {
+                                pct = Math.min((cur / 1440) * 100, 98);
+                            }
+                        }
+                    }
+                    if (pct > 0) {
                         item.percent = pct;
                         sendProgress(pct);
                     }

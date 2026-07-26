@@ -4,7 +4,9 @@ const package = require('./package.json');
 
 module.exports = {
   packagerConfig: {
-    asar: true,
+    asar: {
+      unpack: "**/{node_modules/@ffmpeg-installer/**,node_modules/ffmpeg-installer/**}"
+    },
     appBundleId: "com.mjkey.anixflow",
     name: "AniXFlow",
     appCopyright: "AniXFlow",

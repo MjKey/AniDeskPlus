@@ -328,11 +328,19 @@
                         if (!rawUrl) return;
                         const realUrl = rawUrl.startsWith('//') ? `https:${rawUrl}` : rawUrl;
                         await window.offlineApi.downloadEpisode(
-                            { id: args.id, title: args.title_ru || args.title || args.name, image: args.image },
+                            {
+                                id: args.id,
+                                title: args.title_ru || args.title || args.name || "Аниме",
+                                title_ru: args.title_ru || args.title || args.name || "Аниме",
+                                image: args.image,
+                                grade: args.grade ?? null,
+                                status: args.status ?? null,
+                                profile_list_status: args.profile_list_status ?? 0
+                            },
                             { id: epPos, title: x.name },
                             realUrl
                         );
-                        downloadProgressStore.update(s => ({ ...s, [`${args.id}_${epPos}`]: -2 }));
+                        downloadProgressStore.update(s => ({ ...s, [`${args.id}_${epPos}`]: 0 }));
                     } catch (e) {
                         console.error("Download episode error:", e);
                     }
