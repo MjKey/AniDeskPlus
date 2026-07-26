@@ -1,4 +1,16 @@
-const { ipcMain, app, shell } = require('electron');
+const { ipcMain, app, shell, BrowserWindow } = require('electron');
+
+function getMainWindow() {
+    const windows = BrowserWindow.getAllWindows();
+    return windows.length > 0 ? windows[0] : null;
+}
+
+function sendToRenderer(channel, payload) {
+    const win = getMainWindow();
+    if (win && !win.isDestroyed()) {
+        win.webContents.send(channel, payload);
+    }
+}
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
@@ -144,24 +156,20 @@ function initDownloader(mainWindow) {
                 lastProgressTime = now;
                 lastProgressPercent = percent;
 
-                if (mainWindow && !mainWindow.isDestroyed()) {
-                    mainWindow.webContents.send('offline:progress', {
-                        animeId:   item.animeMeta.id,
-                        episodeId: item.episodeMeta.id,
-                        percent
-                    });
-                }
+                sendToRenderer('offline:progress', {
+                    animeId:   item.animeMeta.id,
+                    episodeId: item.episodeMeta.id,
+                    percent
+                });
             }
         };
 
         const sendError = (errorMsg) => {
-            if (mainWindow && !mainWindow.isDestroyed()) {
-                mainWindow.webContents.send('offline:error', {
-                    animeId:   item.animeMeta.id,
-                    episodeId: item.episodeMeta.id,
-                    error:     errorMsg || 'Unknown error'
-                });
-            }
+            sendToRenderer('offline:error', {
+                animeId:   item.animeMeta.id,
+                episodeId: item.episodeMeta.id,
+                error:     errorMsg || 'Unknown error'
+            });
         };
 
         sendProgress(0);
@@ -457,13 +465,11 @@ function initDownloader(mainWindow) {
             fileStream: null
         };
 
-        if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('offline:progress', {
-                animeId:   animeMeta.id,
-                episodeId: episodeMeta.id,
-                percent:   -2
-            });
-        }
+        sendToRenderer('offline:progress', {
+            animeId:   animeMeta.id,
+            episodeId: episodeMeta.id,
+            percent:   -2
+        });
 
         downloadQueue.push(downloadId);
         processQueue();
@@ -490,11 +496,9 @@ function initDownloader(mainWindow) {
             item.request.destroy();
         } else {
             delete activeDownloads[downloadId];
-            if (mainWindow && !mainWindow.isDestroyed()) {
-                mainWindow.webContents.send('offline:progress', {
-                    animeId, episodeId, percent: -1
-                });
-            }
+            sendToRenderer('offline:progress', {
+                animeId, episodeId, percent: -1
+            });
         }
         return true;
     });

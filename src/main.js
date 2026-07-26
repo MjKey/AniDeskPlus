@@ -628,7 +628,7 @@ app.on('ready', () => {
   if (process.platform === 'win32') {
     app.setAppUserModelId('com.mjkey.anixflow');
   }
-  initDownloader(ipcMain, app, shell);
+  initDownloader();
   createTray();
   createWindow();
   if (isDebugMode) {
