@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/MjKey/AniXFlow/refs/heads/main/icon/Logo.png" width="128" alt="AniXFlow Logo" />
+<img src="https://raw.githubusercontent.com/MjKey/AniXFlow/refs/heads/main/icon/Logo.png" width="256" alt="AniXFlow Logo" />
 
 # AniXFlow
 
