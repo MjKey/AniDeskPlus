@@ -447,12 +447,20 @@
 
     async function renderUpscale() {
         if (!availableGPU) return;
-        canvas = await waitForElm(".player-canvas");
-        if (!upscaleRenderer && video && canvas) {
-            upscaleRenderer = new UpscaleRenderer(video, canvas, defaultCanvasSize);
-        }
-        if (upscaleRenderer) {
-            await upscaleRenderer.render(upscaleEnabled, upscaleSettings?.mode ?? 0);
+        try {
+            canvas = await waitForElm(".player-canvas");
+            if (!video || !canvas) return;
+            if (!video.videoWidth || !video.videoHeight) return;
+
+            if (!upscaleRenderer) {
+                upscaleRenderer = new UpscaleRenderer(video, canvas, defaultCanvasSize);
+            }
+            if (upscaleRenderer) {
+                await upscaleRenderer.render(upscaleEnabled, upscaleSettings?.mode ?? 0);
+            }
+        } catch (e) {
+            console.error("[Player] WebGPU Upscale error, falling back to direct video:", e);
+            availableGPU = false;
         }
     }
 
@@ -492,6 +500,12 @@
         if (video) {
             video.addEventListener("enterpictureinpicture", handleEnterPiP);
             video.addEventListener("leavepictureinpicture", handleLeavePiP);
+            video.addEventListener("loadedmetadata", () => {
+                renderUpscale().catch((e) => console.error("[Player] Upscale on metadata error:", e));
+            });
+            video.addEventListener("playing", () => {
+                renderUpscale().catch((e) => console.error("[Player] Upscale on playing error:", e));
+            });
         }
         init();
     });
@@ -958,7 +972,7 @@
         </div>
     {/if}
 
-    {#if availableGPU && upscaleEnabled}
+    {#if availableGPU}
         <canvas
             bind:this={canvas}
             class="player-canvas {aspectRatio}"
@@ -970,8 +984,8 @@
         bind:this={video}
         class="player-video {aspectRatio}"
         crossorigin="anonymous"
-        class:full={!(availableGPU && upscaleEnabled)}
-        class:hide={availableGPU && upscaleEnabled}
+        class:full={!availableGPU}
+        class:hide={availableGPU}
     ></video>
 </div>
 
