@@ -59,6 +59,9 @@ export class UpscaleRenderer {
         this.video = video;
         this.canvas = canvas;
         this.defaultCanvasSize = defaultCanvasSize || { width: screen.width, height: screen.height };
+        this.isInitialized = false;
+        this.enabled = true;
+        this.mode = 0;
     }
 
     /**
@@ -67,9 +70,16 @@ export class UpscaleRenderer {
      * @param {number} mode
      */
     async render(enabled, mode) {
+        this.enabled = enabled;
+        this.mode = mode;
+
+        if (this.isInitialized) {
+            return;
+        }
+
         if (!this.video || !this.canvas || !this.video.videoWidth || !this.video.videoHeight) return;
 
-        const ModeClass = UPSCALE_MODE_MAP[mode] || Original;
+        this.isInitialized = true;
 
         await render({
             video: this.video,
@@ -85,9 +95,11 @@ export class UpscaleRenderer {
                     height: this.defaultCanvasSize.height,
                 };
 
+                const SelectedMode = UPSCALE_MODE_MAP[this.mode] || Original;
+
                 return [
-                    enabled
-                        ? new ModeClass({
+                    this.enabled
+                        ? new SelectedMode({
                               device,
                               inputTexture,
                               nativeDimensions,
