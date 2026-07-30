@@ -554,7 +554,12 @@ function createWindow() {
   });
 
   mainWindow.once('ready-to-show', async () => {
-    mainWindow.show();
+    if (mainWindow) {
+      mainWindow.setFullScreen(false);
+      mainWindow.unmaximize();
+      mainWindow.center();
+      mainWindow.show();
+    }
   });
 
   mainWindow.webContents.session.webRequest.onBeforeRequest(
