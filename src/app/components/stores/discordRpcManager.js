@@ -75,8 +75,9 @@ export class DiscordRpcManager {
      * Сбросить статус Discord RPC.
      */
     setIdle() {
-        if (!window.discordRPC) return;
-        window.discordRPC.clearActivity();
+        if (window.discordRPC && typeof window.discordRPC.clearActivity === 'function') {
+            window.discordRPC.clearActivity();
+        }
     }
 
     clear() {

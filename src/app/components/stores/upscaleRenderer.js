@@ -67,7 +67,7 @@ export class UpscaleRenderer {
      * @param {number} mode
      */
     async render(enabled, mode) {
-        if (!this.video || !this.canvas) return;
+        if (!this.video || !this.canvas || !this.video.videoWidth || !this.video.videoHeight) return;
 
         const ModeClass = UPSCALE_MODE_MAP[mode] || Original;
 

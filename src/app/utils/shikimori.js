@@ -6,6 +6,7 @@
 const USER_AGENT = "AniXFlowApp/1.0 (Desktop; Windows)";
 
 export const SHIKI_CLIENT_ID = __ENV_SHIKIMORI_CLIENT_ID__;
+export const SHIKI_CLIENT_SECRET = __ENV_SHIKIMORI_CLIENT_SECRET__;
 export const SHIKI_REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob";
 
 export const ShikimoriDomains = [
@@ -39,7 +40,7 @@ export function getShikimoriAuthUrl() {
 export async function exchangeShikimoriCode(authCode) {
     if (!authCode) return null;
     if (window.shikimoriAuth?.exchangeCode) {
-        return window.shikimoriAuth.exchangeCode(authCode, getShikimoriDomain());
+        return window.shikimoriAuth.exchangeCode(authCode, getShikimoriDomain(), SHIKI_CLIENT_ID, SHIKI_CLIENT_SECRET);
     }
     return null;
 }
@@ -59,7 +60,7 @@ export async function refreshShikimoriToken() {
 
     try {
         if (window.shikimoriAuth?.refreshToken) {
-            const tokenData = await window.shikimoriAuth.refreshToken(refreshToken, getShikimoriDomain());
+            const tokenData = await window.shikimoriAuth.refreshToken(refreshToken, getShikimoriDomain(), SHIKI_CLIENT_ID, SHIKI_CLIENT_SECRET);
             if (tokenData && tokenData.access_token) {
                 localStorage.setItem("shikimori_token", tokenData.access_token);
                 if (tokenData.refresh_token) {

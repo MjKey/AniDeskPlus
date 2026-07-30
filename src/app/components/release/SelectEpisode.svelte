@@ -531,8 +531,17 @@
                             );
                         }
 
+                        let resolvedQuality = String(playingSettings?.defaultQuality || "720");
+                        if (!availableQuality?.[resolvedQuality]) {
+                            if (availableQuality?.["1080"]) resolvedQuality = "1080";
+                            else if (availableQuality?.["720"]) resolvedQuality = "720";
+                            else if (availableQuality?.["480"]) resolvedQuality = "480";
+                            else if (availableQuality?.["360"]) resolvedQuality = "360";
+                            else resolvedQuality = Object.keys(availableQuality || {})[0] || "720";
+                        }
+
                         const url =
-                            availableQuality?.[String(playingSettings.defaultQuality)]?.src ??
+                            availableQuality?.[resolvedQuality]?.src ??
                             availableQuality?.["1080"]?.src ??
                             availableQuality?.["720"]?.src ??
                             availableQuality?.["480"]?.src ??
@@ -552,7 +561,7 @@
 
                         updateViewportComponent(11, {
                             src: finalSrc,
-                            currentQuality: playingSettings.defaultQuality || 720,
+                            currentQuality: resolvedQuality,
                             availableQuality: availableQuality || {},
                             release: args,
                             episodes: i.episodes,

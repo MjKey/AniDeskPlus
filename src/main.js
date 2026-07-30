@@ -587,7 +587,9 @@ function createWindow() {
         sendDebugLog('net', `-> [${details.method}] ${url}`);
       }
 
-      UpsertKeyValue(requestHeaders, 'Referer', null);
+      if (host.includes('anixart') || host.includes('anixsekai')) {
+        UpsertKeyValue(requestHeaders, 'Referer', null);
+      }
       UpsertKeyValue(requestHeaders, 'Access-Control-Allow-Origin', ['*']);
 
       if (host === "video.sibnet.ru") {
@@ -786,6 +788,12 @@ ipcMain.handle("discordRPC:setActivity", (_, activity) => {
   }
 });
 
+ipcMain.handle("discordRPC:clearActivity", (_) => {
+  if (SettingsFirst.EnableRPC) {
+    discordRpcClient.user?.clearActivity().catch(console.error);
+  }
+});
+
 ipcMain.handle("prc:getVersions", (_) => {
   return {
     chrome: process.versions.chrome,
@@ -869,11 +877,11 @@ ipcMain.handle("debug:send", (_, { type, message, data }) => {
   sendDebugLog(type, message, data);
 });
 
-ipcMain.handle("shikimori:exchangeCode", async (_, { authCode, domain }) => {
+ipcMain.handle("shikimori:exchangeCode", async (_, { authCode, domain, clientId, clientSecret }) => {
   if (!authCode) return null;
 
-  const SHIKI_CLIENT_ID = process.env.SHIKIMORI_CLIENT_ID || '';
-  const SHIKI_CLIENT_SECRET = process.env.SHIKIMORI_CLIENT_SECRET || '';
+  const SHIKI_CLIENT_ID = clientId || process.env.SHIKIMORI_CLIENT_ID || '';
+  const SHIKI_CLIENT_SECRET = clientSecret || process.env.SHIKIMORI_CLIENT_SECRET || '';
   const SHIKI_REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob";
   const userAgent = "AniXFlowApp/1.1 (Desktop; Windows; https://github.com/MjKey/AniXFlow)";
 
@@ -925,11 +933,11 @@ ipcMain.handle("shikimori:exchangeCode", async (_, { authCode, domain }) => {
   }
 });
 
-ipcMain.handle("shikimori:refreshToken", async (_, { refreshToken, domain }) => {
+ipcMain.handle("shikimori:refreshToken", async (_, { refreshToken, domain, clientId, clientSecret }) => {
   if (!refreshToken) return null;
 
-  const SHIKI_CLIENT_ID = process.env.SHIKIMORI_CLIENT_ID || '';
-  const SHIKI_CLIENT_SECRET = process.env.SHIKIMORI_CLIENT_SECRET || '';
+  const SHIKI_CLIENT_ID = clientId || process.env.SHIKIMORI_CLIENT_ID || '';
+  const SHIKI_CLIENT_SECRET = clientSecret || process.env.SHIKIMORI_CLIENT_SECRET || '';
   const userAgent = "AniXFlowApp/1.1 (Desktop; Windows; https://github.com/MjKey/AniXFlow)";
 
   try {
@@ -1070,20 +1078,24 @@ ipcMain.handle("download:episode", async (event, { url, defaultFileName, referer
             while (true) {
               const { done, value } = await reader.read();
               if (done) break;
-              fileStream.write(value);
+              if (!fileStream.write(value)) {
+                await new Promise(resolve => fileStream.once('drain', resolve));
+              }
             }
           } finally {
             if (reader) reader.releaseLock?.();
           }
 
-          if (event.sender) {
+          if (event.sender && !event.sender.isDestroyed()) {
             const percent = Math.round(((i + 1) / totalSegments) * 100);
-            event.sender.send("download:progress", {
-              filePath,
-              downloadedBytes: i + 1,
-              totalBytes: totalSegments,
-              percent
-            });
+            try {
+              event.sender.send("download:progress", {
+                filePath,
+                downloadedBytes: i + 1,
+                totalBytes: totalSegments,
+                percent
+              });
+            } catch (_) {}
           }
         }
       } catch (err) {
@@ -1111,16 +1123,20 @@ ipcMain.handle("download:episode", async (event, { url, defaultFileName, referer
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            fileStream.write(value);
+            if (!fileStream.write(value)) {
+              await new Promise(resolve => fileStream.once('drain', resolve));
+            }
             downloadedBytes += value.length;
-            if (totalBytes > 0 && event.sender) {
+            if (totalBytes > 0 && event.sender && !event.sender.isDestroyed()) {
               const percent = Math.round((downloadedBytes / totalBytes) * 100);
-              event.sender.send("download:progress", {
-                filePath,
-                downloadedBytes,
-                totalBytes,
-                percent
-              });
+              try {
+                event.sender.send("download:progress", {
+                  filePath,
+                  downloadedBytes,
+                  totalBytes,
+                  percent
+                });
+              } catch (_) {}
             }
           }
         } finally {

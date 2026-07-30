@@ -187,6 +187,12 @@ export class HlsManager {
             }
             this._hls = null;
         }
+        if (this._video) {
+            try {
+                this._video.removeAttribute('src');
+                this._video.load();
+            } catch (_) {}
+        }
     }
 
     /**
@@ -197,11 +203,8 @@ export class HlsManager {
         if (!url || typeof url !== 'string') return false;
         if (url.startsWith('anixflow://') || url.startsWith('anidesk-offline://')) return false;
         if (typeof Hls === 'undefined' || !Hls.isSupported()) return false;
-        try {
-            return !new URL(url, window.location.href).pathname.endsWith('.mp4');
-        } catch {
-            return false;
-        }
+        const lowerUrl = url.toLowerCase();
+        return lowerUrl.includes('.m3u8') || lowerUrl.includes(':hls:');
     }
 }
 

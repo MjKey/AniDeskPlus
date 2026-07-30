@@ -120,12 +120,16 @@ function parseKodikSkipString(skipString) {
     const parts = skipString.split(',');
     
     function parseTime(timeStr) {
-        const p = timeStr.trim().split(':');
+        const trimmed = timeStr.trim();
+        const p = trimmed.split(':');
+        if (p.length === 1) {
+            return parseInt(trimmed, 10) || 0;
+        }
         if (p.length === 2) {
-            return parseInt(p[0]) * 60 + parseInt(p[1]);
+            return parseInt(p[0], 10) * 60 + parseInt(p[1], 10);
         }
         if (p.length === 3) {
-            return parseInt(p[0]) * 3600 + parseInt(p[1]) * 60 + parseInt(p[2]);
+            return parseInt(p[0], 10) * 3600 + parseInt(p[1], 10) * 60 + parseInt(p[2], 10);
         }
         return 0;
     }
@@ -184,7 +188,8 @@ function getEpisodeNumber(episode) {
         return episode.position;
     }
     if (episode.name) {
-        const match = episode.name.match(/\d+/);
+        const cleanName = String(episode.name).replace(/\d+p\b/gi, '');
+        const match = cleanName.match(/\d+/);
         if (match) return parseInt(match[0], 10);
     }
     return 1;

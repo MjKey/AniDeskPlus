@@ -15,10 +15,10 @@ mpv/
 Thumbs.db
 .env
 anixart-oapi.json
-
-# Audit & plans
-audit_report.md
-fix_plan.md
-player_decomposition_plan.md
 .agents/
-PROJECT.md
+
+# Ignore markdown files except README
+*.md
+!README.md
+!README.MD
+!readme.md

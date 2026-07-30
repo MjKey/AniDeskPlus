@@ -60,16 +60,23 @@
         showNotAvailableModal = false;
     let modalSubTitle = null;
 
-    let isFavorite = false;
-    let favoriteCount = 0;
-
+    let isUpdatingFavorite = false;
     async function setFavorite(i) {
-        isFavorite
-            ? anixApi.release.removeFavorite(args.id)
-            : anixApi.release.addFavorite(args.id);
-
-        changeFavorite(i);
-        setFavoriteCount(i ? favoriteCount + 1 : favoriteCount - 1);
+        if (isUpdatingFavorite) return;
+        isUpdatingFavorite = true;
+        try {
+            if (isFavorite) {
+                await anixApi.release.removeFavorite(args.id);
+            } else {
+                await anixApi.release.addFavorite(args.id);
+            }
+            changeFavorite(i);
+            setFavoriteCount(i ? Math.max(0, favoriteCount + 1) : Math.max(0, favoriteCount - 1));
+        } catch (e) {
+            console.error("Favorite toggle error:", e);
+        } finally {
+            isUpdatingFavorite = false;
+        }
     }
 
     function setFavoriteCount(i) {

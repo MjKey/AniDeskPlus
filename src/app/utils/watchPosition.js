@@ -29,7 +29,8 @@ function getEpisodeNumber(episode) {
         return episode.position;
     }
     if (episode.name) {
-        const match = episode.name.match(/\d+/);
+        const cleanName = String(episode.name).replace(/\d+p\b/gi, '');
+        const match = cleanName.match(/\d+/);
         if (match) return parseInt(match[0], 10);
     }
     return 1;

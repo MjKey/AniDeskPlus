@@ -96,6 +96,18 @@ function initDownloader(mainWindow) {
     ipcMain.handle("offline:openFolder", () => shell.openPath(offlineStoragePath));
 
     ipcMain.handle("offline:deleteEpisode", async (_, animeId, episodeId) => {
+        const downloadId = `${animeId}_${episodeId}`;
+        if (activeDownloads[downloadId]) {
+            const item = activeDownloads[downloadId];
+            item.cancelled = true;
+            if (item.command) {
+                try { item.command.kill('SIGKILL'); } catch (_) {}
+            } else if (item.request) {
+                try { item.request.destroy(); } catch (_) {}
+            }
+            delete activeDownloads[downloadId];
+        }
+
         const lib = await getLibrary();
         const animeIndex = lib.findIndex(a => a.id === animeId);
         if (animeIndex !== -1) {
@@ -125,7 +137,7 @@ function initDownloader(mainWindow) {
     });
 
     // ── queue ────────────────────────────────────────────────────────────────
-    const MAX_CONCURRENT = 2;
+    const MAX_CONCURRENT = 1;
     const downloadQueue  = [];
     let activeDownloadsCount = 0;
 

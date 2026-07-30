@@ -463,6 +463,9 @@
         const realSrc = qualitySrc.startsWith('//') ? `https:${qualitySrc}` : qualitySrc;
         args.src = realSrc;
         hlsManager.changeQuality(realSrc);
+        setTimeout(() => {
+            renderUpscale();
+        }, 300);
     }
 
     function changeSleepTimer(config) {
@@ -485,6 +488,10 @@
         }
         document.addEventListener("mousemove", hideOnIdle);
         document.addEventListener("visibilitychange", handleAutoPiPOnMinimize);
+        if (video) {
+            video.addEventListener("enterpictureinpicture", handleEnterPiP);
+            video.addEventListener("leavepictureinpicture", handleLeavePiP);
+        }
         init();
     });
 
