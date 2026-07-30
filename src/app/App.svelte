@@ -97,6 +97,13 @@
     };
 
     // Network Timeout Patch (8-second timeout for non-critical requests + cancellation manager)
+    window.addEventListener('unhandledrejection', (event) => {
+        if (event.reason && String(event.reason).includes('[AnixartJS]')) {
+            console.warn('[AniXFlow Suppressed API Error]:', event.reason.message || event.reason);
+            event.preventDefault();
+        }
+    });
+
     const activeControllers = new Set();
 
     window.cancelActiveRequests = function () {
@@ -277,9 +284,9 @@
     if (utoken?.token) {
         anixApi.client.token = utoken.token;
     }
-    window.profileInfo = utoken
+    window.profileInfo = (utoken && utoken.id)
         ? anixApi.profile
-              .info(utoken?.id)
+              .info(utoken.id)
               .then((x) => (profileInfo = x.profile))
               .catch((e) => console.error("Error fetching profileInfo:", e))
         : null;

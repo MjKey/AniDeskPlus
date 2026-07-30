@@ -102,7 +102,12 @@
 	}
     };
 
-    let myProfile = anixApi.profile.info(utoken?.id);
+    let myProfile;
+    $: if (utoken && utoken.id) {
+        myProfile = anixApi.profile.info(utoken.id);
+    } else {
+        myProfile = Promise.resolve(null);
+    }
 </script>
 
 {#snippet defaultAvatar(callback)}
