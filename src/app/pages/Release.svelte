@@ -28,6 +28,8 @@
 
     export let args;
     let isLeftScrollHovered = false;
+    let favoriteCount = 0;
+    let isFavorite = false;
 
     $: releasePromise = (async () => {
         const data = await anixApi.release.info(args.id, true);
