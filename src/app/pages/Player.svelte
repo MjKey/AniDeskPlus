@@ -347,6 +347,7 @@
 
     let unsubUpscaleSettings = upscaleSettingsRaw.subscribe((value) => {
         upscaleSettings = value;
+        upscaleEnabled = Boolean(value?.enabled);
     });
 
     function updatePlayingSettings(patch) {
@@ -957,7 +958,7 @@
         </div>
     {/if}
 
-    {#if availableGPU}
+    {#if availableGPU && upscaleEnabled}
         <canvas
             bind:this={canvas}
             class="player-canvas {aspectRatio}"
@@ -969,8 +970,8 @@
         bind:this={video}
         class="player-video {aspectRatio}"
         crossorigin="anonymous"
-        class:full={!availableGPU}
-        class:hide={availableGPU}
+        class:full={!(availableGPU && upscaleEnabled)}
+        class:hide={availableGPU && upscaleEnabled}
     ></video>
 </div>
 
